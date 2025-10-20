@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMK Interactive Line Architect (3D V14 - Report Fix)</title>
+    <title>KMK Interactive Line Architect (3D V16 - Final)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2058,11 +2058,13 @@
                 const analysis = analyzeLine(false);
                 const machineCount = state.items.filter(i => i.type === 'machine').length;
                 document.getElementById('hud-machines').textContent = machineCount;
-                document.getElementById('hud-throughput').textContent = `${analysis.maxThroughput.toFixed(1)} t/h`;
+                const throughputText = isFinite(analysis.maxThroughput) ? `${analysis.maxThroughput.toFixed(1)} t/h` : 'N/A';
+                document.getElementById('hud-throughput').textContent = throughputText;
                 document.getElementById('hud-power').textContent = `${analysis.totalPower.toFixed(1)} kW/h`;
                 document.getElementById('hud-issues').textContent = analysis.issues.length;
                 document.getElementById('analyze-line-btn').disabled = machineCount === 0;
             };
+            
             const analyzeLine = (generateRecommendations = true) => {
                 const machines = state.items.filter(i => i.type === 'machine');
                 const issues = [];
@@ -2079,20 +2081,32 @@
                 
                 machines.forEach((inst) => {
                     let data;
-                    if(inst.category === 'custom') {
-                        data = { throughput: Infinity, power: 0, price: 0 }; // Assume custom machines are not bottlenecks
-                    } else {
+                    if (inst.category === 'custom') {
+                        data = { throughput: Infinity, power: 0, price: 0, notes: `Custom dimensions: ${inst.footprint.l}x${inst.footprint.w}x${inst.footprint.h}m` };
+                    } else if (inst.id === 'CONV-CUSTOM') {
+                         data = { ...database.conveyors.items['CONV-CUSTOM'], notes: `Custom dimensions: ${inst.footprint.l}x${inst.footprint.w}m` };
+                    }
+                    else {
                         data = database[inst.category].items[inst.id];
                     }
-                    totalPower += data.power;
-                    totalBudget += data.price;
+
+                    totalPower += data.power || 0;
+                    totalBudget += data.price || 0;
                     
-                    // --- FIX: Use machine ID for aggregation, not instanceId ---
-                    const bomKey = inst.id;
+                    let bomKey;
+                    if (inst.id === 'CONV-CUSTOM') {
+                        bomKey = `CONV-CUSTOM-${inst.footprint.l}x${inst.footprint.w}`;
+                    } else if (inst.category === 'custom') {
+                        bomKey = `${inst.name}-${inst.footprint.l}x${inst.footprint.w}x${inst.footprint.h}`;
+                    }
+                    else {
+                        bomKey = inst.id;
+                    }
+
                     if (bom[bomKey]) {
                         bom[bomKey].qty += 1; 
                     } else { 
-                        bom[bomKey] = { ...data, name: inst.name, id: inst.id, qty: 1 };
+                        bom[bomKey] = { ...data, name: inst.name, id: inst.id, category: inst.category, qty: 1 };
                     }
 
                     if (data.throughput < maxThroughput) {
@@ -2109,12 +2123,19 @@
                 
                  if (machines.length === 1 && generateRecommendations) {
                     const machineData = machines[0];
-                    maxThroughput = machineData.category === 'custom' ? 'N/A' : database[machineData.category].items[machineData.id].throughput;
-                    const throughputText = maxThroughput === 'N/A' ? 'N/A' : `${maxThroughput.toFixed(1)} t/h`;
+                    let throughput = 'N/A';
+                    if (machineData.category !== 'custom') {
+                        const dbItem = database[machineData.category]?.items[machineData.id];
+                        if (dbItem && dbItem.throughput) {
+                            throughput = dbItem.throughput;
+                        }
+                    }
+                    const throughputText = throughput === 'N/A' ? 'N/A' : `${throughput.toFixed(1)} t/h`;
                     issues.push({type: 'info', text: `Single machine line. The throughput is defined by the **${machineData.name}** at **${throughputText}**.`});
                 } else if (bottleneckMachine && generateRecommendations) {
-                    const machineData = database[bottleneckMachine.category].items[bottleneckMachine.id];
-                    issues.push({type: 'bottleneck', text: `The maximum line throughput is limited to **${maxThroughput.toFixed(1)} t/h** by the **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
+                    const machineData = bottleneckMachine.category === 'custom' ? bottleneckMachine : database[bottleneckMachine.category].items[bottleneckMachine.id];
+                    const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+                    issues.push({type: 'bottleneck', text: `The maximum line throughput is limited to **${throughputText}** by the **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
                 }
                 
                 return { issues, maxThroughput: machines.length > 0 ? maxThroughput : 0, totalPower, totalBudget, bom };
@@ -2151,7 +2172,12 @@
                 Object.values(bom).forEach(item => {
                     const row = document.createElement('tr');
                     row.className = 'border-b border-gray-700 last:border-b-0';
-                    row.innerHTML = `<td class="py-3 px-2">${item.qty}</td><td class="py-3 px-2 font-semibold text-white">${item.name}</td><td class="py-3 px-2 text-blue-400">${item.id.startsWith('CUSTOM') ? 'Custom' : item.id}</td><td class="py-3 px-2 text-gray-400">${item.notes || ''}</td>`;
+                    let modelIdText = item.id.startsWith('CUSTOM-') ? 'Custom' : item.id;
+                    if(item.id === 'CONV-CUSTOM') {
+                        modelIdText = 'Custom Conveyor';
+                    }
+
+                    row.innerHTML = `<td class="py-3 px-2 align-top">${item.qty}</td><td class="py-3 px-2 font-semibold text-white align-top">${item.name}</td><td class="py-3 px-2 text-blue-400 align-top">${modelIdText}</td><td class="py-3 px-2 text-gray-400 align-top">${item.notes || ''}</td>`;
                     bomContainer.appendChild(row);
                 });
 
@@ -2174,7 +2200,8 @@
 
 
                 document.getElementById('spec-machines').textContent = machineCount;
-                document.getElementById('spec-throughput').textContent = `${maxThroughput.toFixed(1)} t/h`;
+                const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+                document.getElementById('spec-throughput').textContent = throughputText;
                 document.getElementById('spec-power').textContent = `${totalPower.toFixed(1)} kW/h`;
                 
                 draw(ctx2D);
@@ -2183,11 +2210,17 @@
             const sendEmailProposal = () => {
                 const { maxThroughput, totalPower, bom } = analyzeLine(true);
                 const machineCount = state.items.filter(i => i.type === 'machine').length;
+                const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
 
                 let bomText = "Bill of Materials:\n";
                 bomText += "-------------------\n";
                 Object.values(bom).forEach(item => {
-                    bomText += `${item.qty}x ${item.name}\n`;
+                    bomText += `${item.qty}x ${item.name}`;
+                    if(item.id === 'CONV-CUSTOM' || item.category === 'custom') {
+                        bomText += ` (${item.notes})\n`
+                    } else {
+                        bomText += `\n`;
+                    }
                 });
                 
                 const body = `
@@ -2202,7 +2235,7 @@ Facility Dimensions:
 
 Estimated Specifications:
 - Machine Count: ${machineCount}
-- Max Throughput: ${maxThroughput.toFixed(1)} t/h
+- Max Throughput: ${throughputText}
 - Total Est. Power Consumption: ${totalPower.toFixed(1)} kW/h
 
 ${bomText}
