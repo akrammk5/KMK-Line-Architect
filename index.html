@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMK Interactive Line Architect (3D V16 - Final)</title>
+    <title>KMK Interactive Line Architect (3D V17 - Ruler)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,13 +45,15 @@
             background-size: 20px 20px;
             cursor: grab;
         }
-         #canvas-2d-container.linking-active {
+         #canvas-2d-container.linking-active,
+         #canvas-2d-container.ruler-active {
             cursor: crosshair;
         }
         #canvas-2d-container:active {
             cursor: grabbing;
         }
-        #canvas-2d-container.linking-active:active {
+        #canvas-2d-container.linking-active:active,
+        #canvas-2d-container.ruler-active:active {
             cursor: crosshair;
         }
         #canvas-3d-container {
@@ -59,7 +61,8 @@
             top: 0; left: 0; right: 0; bottom: 0;
             cursor: grab;
         }
-        #canvas-3d-container.linking-active {
+        #canvas-3d-container.linking-active,
+        #canvas-3d-container.ruler-active {
             cursor: crosshair;
         }
         #canvas-3d-container:active {
@@ -141,10 +144,16 @@
                             Door
                         </button>
                     </div>
-                     <button id="link-mode-btn" class="mt-2 w-full flex items-center justify-center gap-2 p-2 bg-blue-800 hover:bg-blue-700 rounded-md transition text-sm text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
-                        <span id="link-mode-text">Enable Link Mode</span>
-                    </button>
+                     <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="link-mode-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-blue-800 hover:bg-blue-700 rounded-md transition text-sm text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                            <span id="link-mode-text">Link Mode</span>
+                        </button>
+                        <button id="ruler-mode-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ruler"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6c-1.2 1.2-3 1.3-4.2.2l-7-7c-1.2-1.2-1.2-3 0-4.2l2.6-2.6c.9-.9 2.2-.9 3.1 0l5.1 5.1Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/><path d="M7 16H3v-4"/><path d="M3 13V9"/><path d="M13 3h4v4"/><path d="M17 3h4"/></svg>
+                            <span id="ruler-mode-text">Ruler</span>
+                        </button>
+                    </div>
                 </div>
 
                 <h3 class="text-base font-semibold text-white mb-2">Machine Library</h3>
@@ -409,6 +418,13 @@
                     startNodePosition2D: null, // For 2D canvas
                     startNodePosition3D: null, // For 3D scene
                 },
+                rulerState: {
+                    active: false,
+                    startPoint2D: null, // {x, y} in world coords
+                    endPoint2D: null,   // {x, y} in world coords
+                    startPoint3D: null, // THREE.Vector3
+                    endPoint3D: null    // THREE.Vector3
+                },
                 view: '2d', // '2d' or '3d'
             };
             let state = { ...JSON.parse(JSON.stringify(initialState)) };
@@ -628,10 +644,12 @@
 
             const linkModeBtn = document.getElementById('link-mode-btn');
             const linkModeText = document.getElementById('link-mode-text');
+            const rulerModeBtn = document.getElementById('ruler-mode-btn');
 
             // --- 3D Scene Setup ---
             let scene, camera, renderer, controls, raycaster, mouse;
-            let plane, grid, walls, connectionMeshes, nodeMeshes, previewLinkLine;
+            let plane, grid, walls, connectionMeshes, nodeMeshes;
+            let rulerLine, rulerStartSphere, rulerEndSphere, rulerLabel;
             const threeObjects = new Map();
             let drag3DItem = null;
             const WALL_THICKNESS = 0.2;
@@ -781,6 +799,29 @@
                 return geometry;
             }
 
+            function createRulerLabel(text) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = 'bold 48px Inter';
+                const textMetrics = context.measureText(text);
+                canvas.width = textMetrics.width + 20;
+                canvas.height = 64;
+                
+                context.font = 'bold 48px Inter'; // Font needs to be set again after resize
+                context.fillStyle = 'rgba(0,0,0,0.7)';
+                context.fillRect(0,0, canvas.width, canvas.height);
+                context.fillStyle = '#facc15';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width/2, canvas.height/2);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(canvas.width / 100, canvas.height / 100, 1.0);
+                return sprite;
+            }
+
             const update3DScene = () => {
                 if (!scene) return;
                 const objectsToRemove = new Set(threeObjects.keys());
@@ -877,6 +918,41 @@
                     }
                     threeObjects.delete(id);
                 });
+
+                // --- Ruler 3D ---
+                if (rulerLine) scene.remove(rulerLine);
+                if (rulerStartSphere) scene.remove(rulerStartSphere);
+                if (rulerEndSphere) scene.remove(rulerEndSphere);
+                if (rulerLabel) scene.remove(rulerLabel);
+
+                if (state.rulerState.active && state.rulerState.startPoint3D) {
+                    const points = [state.rulerState.startPoint3D, state.rulerState.endPoint3D];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineDashedMaterial({ color: 0xfacc15, dashSize: 0.2, gapSize: 0.1 });
+                    rulerLine = new THREE.Line(geometry, material);
+                    rulerLine.computeLineDistances();
+                    scene.add(rulerLine);
+
+                    const sphereGeo = new THREE.SphereGeometry(0.1, 16, 16);
+                    const sphereMat = new THREE.MeshBasicMaterial({color: 0xfacc15});
+
+                    rulerStartSphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    rulerStartSphere.position.copy(state.rulerState.startPoint3D);
+                    scene.add(rulerStartSphere);
+                    
+                    rulerEndSphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    rulerEndSphere.position.copy(state.rulerState.endPoint3D);
+                    scene.add(rulerEndSphere);
+                    
+                    const distance = state.rulerState.startPoint3D.distanceTo(state.rulerState.endPoint3D);
+                    if (distance > 0.01) {
+                        rulerLabel = createRulerLabel(`${distance.toFixed(2)} m`);
+                        const midPoint = new THREE.Vector3().addVectors(state.rulerState.startPoint3D, state.rulerState.endPoint3D).multiplyScalar(0.5);
+                        midPoint.y += 0.5; // Lift label above the line
+                        rulerLabel.position.copy(midPoint);
+                        scene.add(rulerLabel);
+                    }
+                }
 
                 update3DConnections();
             };
@@ -1062,6 +1138,59 @@
                 draw(ctx2D);
             };
 
+            const drawRuler = (context) => {
+                if (!state.rulerState.active || !state.rulerState.startPoint2D) return;
+
+                const start = {
+                    x: state.rulerState.startPoint2D.x * state.scale,
+                    y: state.rulerState.startPoint2D.y * state.scale
+                };
+                const end = {
+                    x: state.rulerState.endPoint2D.x * state.scale,
+                    y: state.rulerState.endPoint2D.y * state.scale
+                };
+
+                context.beginPath();
+                context.moveTo(start.x, start.y);
+                context.lineTo(end.x, end.y);
+                context.strokeStyle = '#facc15'; // yellow-400
+                context.lineWidth = 2;
+                context.setLineDash([5, 5]);
+                context.stroke();
+                context.setLineDash([]);
+
+                // Draw circles at ends
+                context.fillStyle = '#facc15';
+                context.beginPath();
+                context.arc(start.x, start.y, 4, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(end.x, end.y, 4, 0, Math.PI * 2);
+                context.fill();
+
+                const distance = Math.sqrt(
+                    Math.pow(state.rulerState.endPoint2D.x - state.rulerState.startPoint2D.x, 2) +
+                    Math.pow(state.rulerState.endPoint2D.y - state.rulerState.startPoint2D.y, 2)
+                );
+
+                if (distance < 0.01) return;
+
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+
+                const text = `${distance.toFixed(2)} m`;
+                context.font = 'bold 14px Inter';
+                const textWidth = context.measureText(text).width;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                context.fillRect(midX - textWidth/2 - 4, midY - 10, textWidth + 8, 20);
+                
+                context.fillStyle = '#facc15';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, midX, midY);
+            };
+
             const draw = (context, isExport = false) => {
                 if(state.view !== '2d' && !isExport) return;
                 context.clearRect(0, 0, canvas2D.width, canvas2D.height);
@@ -1107,6 +1236,8 @@
                 if (state.linkingState.active && state.linkingState.startMachineId && !isExport) {
                     drawPreviewLink(context);
                 }
+
+                drawRuler(context);
                 
                 context.restore();
 
@@ -1160,8 +1291,14 @@
                         context.font = `${Math.max(8, Math.min(16, state.scale / 1.5))}px Inter`;
                         context.textAlign = 'center';
                         context.textBaseline = 'middle';
-                        // FIX: Use inst.id for the label instead of inst.name
-                        context.fillText(inst.id, 0, 0);
+                        
+                        let label = inst.id;
+                        if (inst.id.startsWith('CUSTOM-')) {
+                            label = inst.name.substring(0, 10) + (inst.name.length > 10 ? '...' : '');
+                        } else if (inst.id === 'CONV-CUSTOM') {
+                            label = `Conv ${inst.footprint.l}m`;
+                        }
+                        context.fillText(label, 0, 0);
                     } else if (inst.type === 'door') {
                         context.strokeStyle = '#9ca3af';
                         context.lineWidth = 1;
@@ -1350,6 +1487,21 @@
             // --- 2D Event Listeners ---
             canvas2DContainer.addEventListener('mousedown', (e) => {
                 if(state.view !== '2d') return;
+
+                 if (state.rulerState.active) {
+                    const worldPos = getCanvasWorldPos(e);
+                    if (!state.rulerState.startPoint2D) {
+                        state.rulerState.startPoint2D = worldPos;
+                        state.rulerState.endPoint2D = worldPos;
+                    } else {
+                        // Finalize on second click and reset for a new measurement
+                        state.rulerState.startPoint2D = null;
+                        state.rulerState.endPoint2D = null;
+                    }
+                    draw(ctx2D);
+                    return;
+                }
+
                 state.selectedItemId = null;
                 state.selectedConnectionId = null;
 
@@ -1400,6 +1552,12 @@
             const handle2DMouseMove = (e) => {
                 if(state.view !== '2d') return;
                 lastMousePos = { x: e.clientX, y: e.clientY };
+
+                if (state.rulerState.active && state.rulerState.startPoint2D) {
+                    state.rulerState.endPoint2D = getCanvasWorldPos(e);
+                    draw(ctx2D);
+                    return; // Don't do other things while measuring
+                }
                 
                 if (state.draggingItem) {
                     const worldPos = getCanvasWorldPos(e);
@@ -1445,6 +1603,7 @@
 
             canvas2DContainer.addEventListener('dblclick', (e) => {
                 if(state.view !== '2d') return;
+                if (state.rulerState.active) return; // No dblclick action in ruler mode
                 const worldPos = getCanvasWorldPos(e);
                 const itemToRemove = getItemAt(worldPos);
                 if (itemToRemove) {
@@ -1552,6 +1711,22 @@
             function on3DMouseDown(e) {
                 if (state.view !== '3d') return;
                 const intersects = get3DIntersects(e);
+
+                if (state.rulerState.active) {
+                    const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
+                    if (groundIntersect) {
+                         if (!state.rulerState.startPoint3D) {
+                            state.rulerState.startPoint3D = groundIntersect.point.clone();
+                            state.rulerState.endPoint3D = groundIntersect.point.clone();
+                        } else {
+                            // Finalize and reset
+                            state.rulerState.startPoint3D = null;
+                            state.rulerState.endPoint3D = null;
+                        }
+                    }
+                    update3DScene();
+                    return;
+                }
                 
                 if (state.linkingState.active) {
                     const nodeIntersect = intersects.find(i => i.object.userData.machineId);
@@ -1568,8 +1743,6 @@
                             }
                             state.linkingState.startMachineId = null;
                             state.linkingState.startNodePosition3D = null;
-                            if (previewLinkLine) scene.remove(previewLinkLine);
-                            previewLinkLine = null;
                         }
                     }
                     update3DScene();
@@ -1610,17 +1783,20 @@
                 lastMousePos = { x: e.clientX, y: e.clientY };
 
                 const intersects = get3DIntersects(e);
+
+                if (state.rulerState.active && state.rulerState.startPoint3D) {
+                     const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
+                     if (groundIntersect) {
+                         state.rulerState.endPoint3D = groundIntersect.point.clone();
+                         update3DScene();
+                     }
+                     return; // Don't do other things while measuring
+                }
                 
                 if (state.linkingState.active && state.linkingState.startMachineId) {
                     const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
                     if (groundIntersect) {
-                        if (previewLinkLine) scene.remove(previewLinkLine);
-                        const points = [state.linkingState.startNodePosition3D, groundIntersect.point];
-                        const geo = new THREE.BufferGeometry().setFromPoints(points);
-                        const mat = new THREE.LineDashedMaterial({ color: 0xf97316, dashSize: 0.2, gapSize: 0.1 });
-                        previewLinkLine = new THREE.Line(geo, mat);
-                        previewLinkLine.computeLineDistances();
-                        scene.add(previewLinkLine);
+                        // This logic was for a preview line that isn't used, can be removed or kept for future use
                     }
                 }
 
@@ -1687,6 +1863,7 @@
 
             function on3DDoubleClick(e) {
                 if (state.view !== '3d') return;
+                if (state.rulerState.active) return; // No dblclick in ruler mode
                 const intersects = get3DIntersects(e);
                  if (intersects.length > 0) {
                     const intersectedObj = intersects.find(i => i.object.userData.instanceId);
@@ -1725,8 +1902,13 @@
                     draw(ctx2D);
                     update3DScene();
                 }
-                 if (e.key === 'Escape' && state.linkingState.active) {
-                    toggleLinkMode();
+                 if (e.key === 'Escape') {
+                    if (state.linkingState.active) {
+                        toggleLinkMode(false);
+                    }
+                    if (state.rulerState.active) {
+                        toggleRulerMode(false);
+                    }
                 }
             });
             
@@ -1772,7 +1954,7 @@
             };
             
             const updateTooltip = (e) => {
-                if (state.view === '3d') {
+                if (state.view === '3d' || state.rulerState.active) {
                     tooltip.style.display = 'none';
                     return;
                 }
@@ -2000,27 +2182,72 @@
                 draw(ctx2D);
                 update3DScene();
             });
-
             
-             const toggleLinkMode = () => {
-                state.linkingState.active = !state.linkingState.active;
-                // Reset on toggle
+            const toggleMode = (modeToEnable) => {
+                if (modeToEnable === 'link') {
+                    if (!state.linkingState.active) {
+                        state.linkingState.active = true;
+                        if(state.rulerState.active) toggleRulerMode(false);
+                    } else {
+                        state.linkingState.active = false;
+                    }
+                } else if (modeToEnable === 'ruler') {
+                     if (!state.rulerState.active) {
+                        state.rulerState.active = true;
+                        if(state.linkingState.active) toggleLinkMode(false);
+                    } else {
+                        state.rulerState.active = false;
+                    }
+                }
+                updateModeUI();
+            }
+
+            const toggleLinkMode = (force) => {
+                const newState = typeof force === 'boolean' ? force : !state.linkingState.active;
+                state.linkingState.active = newState;
+                if (newState && state.rulerState.active) {
+                    toggleRulerMode(false);
+                }
                 state.linkingState.startMachineId = null;
                 state.linkingState.startNodePosition2D = null;
                 state.linkingState.startNodePosition3D = null;
-                if(previewLinkLine) scene.remove(previewLinkLine);
-                previewLinkLine = null;
+                updateModeUI();
+            };
 
-                canvas2DContainer.classList.toggle('linking-active', state.linkingState.active);
-                canvas3DContainer.classList.toggle('linking-active', state.linkingState.active);
+            const toggleRulerMode = (force) => {
+                const newState = typeof force === 'boolean' ? force : !state.rulerState.active;
+                state.rulerState.active = newState;
+                if (newState && state.linkingState.active) {
+                    toggleLinkMode(false);
+                }
+                state.rulerState.startPoint2D = null;
+                state.rulerState.endPoint2D = null;
+                state.rulerState.startPoint3D = null;
+                state.rulerState.endPoint3D = null;
+                updateModeUI();
+            };
+
+            const updateModeUI = () => {
+                // Link Mode UI
                 linkModeBtn.classList.toggle('bg-green-600', state.linkingState.active);
                 linkModeBtn.classList.toggle('bg-blue-800', !state.linkingState.active);
-                linkModeText.textContent = state.linkingState.active ? 'Link Mode Active' : 'Enable Link Mode';
-                
+                linkModeText.textContent = state.linkingState.active ? 'Link Active' : 'Link Mode';
+                canvas2DContainer.classList.toggle('linking-active', state.linkingState.active);
+                canvas3DContainer.classList.toggle('linking-active', state.linkingState.active);
+
+                // Ruler Mode UI
+                rulerModeBtn.classList.toggle('bg-green-600', state.rulerState.active);
+                rulerModeBtn.classList.toggle('text-white', state.rulerState.active);
+                rulerModeBtn.classList.toggle('bg-gray-700', !state.rulerState.active);
+                canvas2DContainer.classList.toggle('ruler-active', state.rulerState.active);
+                canvas3DContainer.classList.toggle('ruler-active', state.rulerState.active);
+
                 draw(ctx2D);
                 update3DScene();
             };
-            linkModeBtn.addEventListener('click', toggleLinkMode);
+            
+            linkModeBtn.addEventListener('click', () => toggleLinkMode());
+            rulerModeBtn.addEventListener('click', () => toggleRulerMode());
             
             document.getElementById('reset-view-btn').addEventListener('click', () => {
                 state.pan = { ...initialState.pan };
