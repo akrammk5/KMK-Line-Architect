@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMK Interactive Line Architect (3D V17 - Ruler)</title>
+    <title>KMK Interactive Line Architect (3D V18 - Final)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -429,7 +429,7 @@
             };
             let state = { ...JSON.parse(JSON.stringify(initialState)) };
             
-            // --- FULL Machine Database ---
+            // --- FULL Machine Database (V18 Update) ---
             const database = {
                 intake: {
                     name: 'Intake & Receiving',
@@ -565,7 +565,7 @@
                         'BNS-1': {id: 'BNS-1', name: 'Crate Filler BNS-1', footprint: {l: 2.8, w: 1.2, h: 2.0}, throughput: 12, power: 0.5, price: 4930, notes: '1 buffer container.'},
                         'BNS-2': { id: 'BNS-2', name: 'Crate Filler BNS-2', footprint: { l: 3.0, w: 1.2, h: 2.0 }, throughput: 15, power: 0.5, price: 5990, notes: '2 buffer containers.' },
                         'NS': { id: 'NS', name: 'Box Filler NS', h: 3.0, footprint: {l: 3.5, w: 3.0, h: 3.0}, throughput: 40, power: 3.5, price: 19250, notes: 'Gentle filling for standard boxes.'},
-                        'NSP': { id: 'NSP', name: 'H-Cap Box Filler NSP', h: 3.8, footprint: {l: 4.0, w: 3.2, h: 3.8}, throughput: 55, power: 3.5, price: 24290, notes: 'High speed, adjustable for various boxes.'},
+                        'NSP': { id: 'NSP', name: 'H-Cap Box Filler NSP', h: 2.56, footprint: {l: 4.23, w: 2.24, h: 2.56}, throughput: 55, power: 3.5, price: 24290, notes: 'High speed, adjustable for various boxes.'},
                         'NB-1': {id: 'NB-1', name: 'Universal Filler NB-1', footprint: { l: 3.2, w: 2.8, h: 3.5 }, throughput: 35, power: 1.0, price: 7710, notes: '1 filling unit for big-bags & boxes.'},
                         'NB-2': { id: 'NB-2', name: 'Universal Filler NB-2', footprint: { l: 3.5, w: 3.0, h: 3.5 }, throughput: 40, power: 2.5, price: 14590, notes: '2 filling units for big-bags & boxes.' },
                     }
@@ -597,14 +597,6 @@
                         'NK-8': { id: 'NK-8', name: 'Fall Damper NK-8', footprint: { l: 0.8, w: 1.0, h: 1.5 }, throughput: 50, power: 0.5, price: 5000, notes: 'Automatic fall damper unit (8 sails).' },
                         'NK-12': { id: 'NK-12', name: 'Fall Damper NK-12', footprint: { l: 0.8, w: 1.4, h: 1.5 }, throughput: 50, power: 0.7, price: 5800, notes: 'Automatic fall damper unit (12 sails).' },
                         'NK-18': { id: 'NK-18', name: 'Fall Damper NK-18', footprint: { l: 0.8, w: 2.0, h: 1.5 }, throughput: 50, power: 0.7, price: 7100, notes: 'Automatic fall damper unit (18 sails).' },
-                    }
-                },
-                agriculture: {
-                    name: 'Agricultural Tools',
-                    color: '#16a34a',
-                    items: {
-                        'OF-275': { id: 'OF-275', name: 'Ridging Hiller OF-275', footprint: { l: 1.8, w: 1.8, h: 1.2 }, throughput: 0, power: 0, price: 2500, notes: '2-row, 75cm spacing. Tractor mounted.' },
-                        'OF-475': { id: 'OF-475', name: 'Ridging Hiller OF-475', footprint: { l: 1.8, w: 3.2, h: 1.2 }, throughput: 0, power: 0, price: 4200, notes: '4-row, 75cm spacing. Tractor mounted.' },
                     }
                 },
                 utility: {
@@ -1469,6 +1461,64 @@
                 return null;
             };
 
+            function distToSegment(p, v, w) {
+                const l2 = (v.x - w.x)**2 + (v.y - w.y)**2;
+                if (l2 == 0) return Math.sqrt((p.x - v.x)**2 + (p.y - v.y)**2);
+                let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                const closestPoint = { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+                return Math.sqrt((p.x - closestPoint.x)**2 + (p.y - closestPoint.y)**2);
+            }
+
+            const getConnectionAt = (worldPos) => {
+                const clickThreshold = 5 / state.scale; // 5 pixels tolerance in world space
+                let closestConn = null;
+                let minDist = Infinity;
+
+                for (const conn of state.connections) {
+                    const fromMachine = state.items.find(m => m.instanceId === conn.from);
+                    const toMachine = state.items.find(m => m.instanceId === conn.to);
+                    if (!fromMachine || !toMachine) continue;
+
+                    const fromNodes = getMachineNodes(fromMachine);
+                    const toNodes = getMachineNodes(toMachine);
+                    
+                    const startPos = { x: fromNodes.out.x2d / state.scale, y: fromNodes.out.y2d / state.scale };
+                    const endPos = { x: toNodes.in.x2d / state.scale, y: toNodes.in.y2d / state.scale };
+
+                    const cp1 = { x: startPos.x + (endPos.x - startPos.x) * 0.5, y: startPos.y };
+                    const cp2 = { x: endPos.x - (endPos.x - startPos.x) * 0.5, y: endPos.y };
+
+                    const steps = 20;
+                    let lastPoint = startPos;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const t_inv = 1 - t;
+                        const t_inv2 = t_inv * t_inv;
+                        const t_inv3 = t_inv2 * t_inv;
+                        const t2 = t * t;
+                        const t3 = t2 * t;
+
+                        const currentPoint = {
+                            x: t_inv3 * startPos.x + 3 * t_inv2 * t * cp1.x + 3 * t_inv * t2 * cp2.x + t3 * endPos.x,
+                            y: t_inv3 * startPos.y + 3 * t_inv2 * t * cp1.y + 3 * t_inv * t2 * cp2.y + t3 * endPos.y
+                        };
+                        
+                        const dist = distToSegment(worldPos, lastPoint, currentPoint);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closestConn = conn;
+                        }
+                        lastPoint = currentPoint;
+                    }
+                }
+
+                if (minDist < clickThreshold) {
+                    return closestConn;
+                }
+                return null;
+            }
+
             const getClickedNode2D = (worldPixelPos) => {
                 const nodeRadius = 7;
                 for (const machine of state.items) {
@@ -1502,9 +1552,6 @@
                     return;
                 }
 
-                state.selectedItemId = null;
-                state.selectedConnectionId = null;
-
                 const worldPos = getCanvasWorldPos(e);
                 const worldPixelPos = getWorldPixelPos(e);
 
@@ -1533,6 +1580,8 @@
                     return;
                 }
 
+                state.selectedItemId = null;
+                state.selectedConnectionId = null;
 
                 const clickedItem = getItemAt(worldPos);
                 if (clickedItem) {
@@ -1541,9 +1590,14 @@
                     state.dragOffset.x = worldPos.x - clickedItem.x;
                     state.dragOffset.y = worldPos.y - clickedItem.y;
                 } else {
-                   state.isPanning = true;
-                   state.startPan.x = e.clientX - state.pan.x;
-                   state.startPan.y = e.clientY - state.pan.y;
+                    const clickedConnection = getConnectionAt(worldPos);
+                    if (clickedConnection) {
+                        state.selectedConnectionId = clickedConnection.id;
+                    } else {
+                        state.isPanning = true;
+                        state.startPan.x = e.clientX - state.pan.x;
+                        state.startPan.y = e.clientY - state.pan.y;
+                    }
                 }
                 draw(ctx2D);
                 update3DScene();
@@ -1774,6 +1828,7 @@
                         state.selectedItemId = null;
                     }
                 }
+                state.selectedConnectionId = null; // Deselect any connection
                 update3DScene(); 
                 draw(ctx2D);
             }
@@ -2365,7 +2420,7 @@
                     issues.push({type: 'bottleneck', text: `The maximum line throughput is limited to **${throughputText}** by the **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
                 }
                 
-                return { issues, maxThroughput: machines.length > 0 ? maxThroughput : 0, totalPower, totalBudget, bom };
+                return { issues, maxThroughput, totalPower, totalBudget, bom };
             };
 
             const generateProposal = () => {
