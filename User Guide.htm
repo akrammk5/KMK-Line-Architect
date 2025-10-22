@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMK Line Architect - User Guide (V19)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Base Styles --- */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa; /* Lighter, cleaner background */
+            color: #343a40; /* Softer black for text */
+        }
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            overflow: hidden; /* To contain the hero radius */
+        }
+
+        /* --- Hero Header --- */
+        .hero {
+            background: linear-gradient(135deg, #005691 0%, #0073b7 100%);
+            color: white;
+            padding: 40px 40px 30px;
+        }
+        .hero h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 0;
+            border-bottom: none;
+        }
+        .hero p {
+            font-size: 1.1em;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 10px;
+            max-width: 80ch;
+        }
+        
+        /* --- Content Area --- */
+        .content-wrapper {
+            padding: 20px 40px 40px;
+        }
+
+        /* --- Typography & Sectioning --- */
+        h2 {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #005691;
+            border-bottom: 3px solid #0073b7;
+            padding-bottom: 10px;
+            margin-top: 2.5em;
+            margin-bottom: 1.5em;
+        }
+        h2:first-child {
+            margin-top: 1em;
+        }
+        h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #0073b7;
+            border-bottom: none;
+            margin-top: 2em;
+            margin-bottom: 1em;
+        }
+        p, li {
+            font-size: 1rem;
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+
+        /* --- Interactive & UI Elements --- */
+        code, .key {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.9em;
+            border: 1px solid #dee2e6;
+        }
+        .key {
+            font-weight: 600;
+            box-shadow: 0 2px 0 #ced4da;
+            position: relative;
+            top: -1px;
+        }
+        .note {
+            background-color: #fff3cd; /* Light yellow */
+            border-left: 5px solid #ffc107; /* Amber */
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95em;
+        }
+        .note strong {
+            color: #664d03;
+        }
+        
+        /* --- Feature Cards (Replaces .sidebar-section) --- */
+        .feature-card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        .feature-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+        }
+        .icon { /* Using emoji directly in HTML for simplicity, but this class is kept */
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        /* --- Styled Table --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden; /* For border-radius on table */
+        }
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #005691;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr {
+            background-color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e9ecef; /* Subtle hover for interactivity */
+        }
+
+        /* --- Image Styling --- */
+        img.guide-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+            margin-bottom: 30px; /* Added some space below the image */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Hero Section --><header class="hero">
+            <h1>KMK Line Architect</h1>
+            <p>User Guide (V19)</p>
+        </header>
+
+        <div class="content-wrapper">
+            <p style="font-size: 1.1em; color: #343a40;">Welcome to the KMK Line Architect, your interactive tool for designing and analyzing custom processing lines using KMK Machinery. This guide will walk you through the platform's features and how to use them effectively.</p>
+
+            <!-- Image added here --><a href="https://freeimage.host/i/KU7qD9R"><img src="https://iili.io/KU7qD9R.md.jpg" alt="KMK Line Architect Overview" class="guide-image" border="0"></a>
+
+
+            <!-- Section 1: Platform Overview --><section id="overview">
+                <h2>1. Platform Overview</h2>
+                <p>The KMK Line Architect allows you to:</p>
+                <ul>
+                    <li>Define the dimensions of your production facility.</li>
+                    <li>Drag and drop KMK machines and other elements (pillars, doors, platforms) onto a 2D canvas.</li>
+                    <li>Visualize your design in both 2D (top-down) and interactive 3D views.</li>
+                    <li>Connect machines logically to simulate product flow.</li>
+                    <li>Measure distances within your layout.</li>
+                    <li>Analyze your line for potential bottlenecks and estimate key specifications (throughput, power).</li>
+                    <li>Save your progress and load existing projects.</li>
+                    <li>Generate a preliminary proposal based on your design.</li>
+                </ul>
+            </section>
+
+            <!-- Section 2: Core Features --><section id="features">
+                <h2>2. Core Features & Tools (Sidebar)</h2>
+
+                <div class="feature-card">
+                    <h3><span class="icon">🖥️</span>2.1. View & Layout</h3>
+                    <ul>
+                        <li><strong>Export PNG:</strong> Saves a snapshot of the current 2D canvas view as a PNG image file.</li>
+                        <li><strong>Reset View:</strong> Resets the zoom and pan settings of the current view (2D or 3D) to the default state.</li>
+                        <li><strong>2D/3D View Toggle:</strong> Switch between the top-down 2D layout canvas and the interactive 3D visualization.</li>
+                        <li><strong>Pillar Button:</strong> Opens a modal to define the dimensions (width, depth) of a structural pillar to add to the layout.</li>
+                        <li><strong>Door Button:</strong> Opens a modal to define the dimensions (width, wall thickness, height) of a doorway to add to the layout.</li>
+                        <li><strong>Link Mode Button:</strong> Toggles linking on/off. When active (green), click machine nodes to create connections. Cursor changes to a crosshair.</li>
+                        <li><strong>Ruler Button:</strong> Toggles the measurement tool on/off. When active (green), click two points to measure the distance between them.</li>
+                        <li><strong>Save Project Button:</strong> Saves the current state of your design to a <code>.kmkproj</code> file.</li>
+                        <li><strong>Load Project Button:</strong> Loads a previously saved <code>.kmkproj</code> file, replacing the current design.</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3><span class="icon">🔧</span>2.2. Machine Library</h3>
+                    <p>Contains a categorized list of available KMK machines, conveyors, platforms, and utility items. Click category headers to expand/collapse sections.</p>
+                    <ul>
+                        <li><strong>Drag & Drop:</strong> Click and drag machines onto the main canvas (2D view only) to place them.</li>
+                        <li><strong>Custom Items:</strong>
+                            <ul>
+                                <li><strong>Add Platform / Layer:</strong> Define dimensions for multi-level designs. Machines placed on platforms in 2D will appear at the correct elevation in 3D.</li>
+                                <li><strong>Custom Conveyor:</strong> Define a conveyor with specific Length, Width, and Start/End Heights.</li>
+                                <li><strong>Add Custom Machine:</strong> Define a placeholder block for third-party or non-standard equipment with custom dimensions.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3><span class="icon">📊</span>2.3. Analyze & Generate Proposal</h3>
+                    <p>Located at the bottom of the sidebar, this tool analyzes the current line design for issues, calculates estimated throughput and power, and generates a detailed proposal (Stage 3).</p>
+                    <div class="note">
+                        <p><strong>Note:</strong> This button is disabled until at least one machine is placed on the canvas.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Main Canvas & HUD --><section id="canvas-hud">
+                <h2>3. Main Canvas & HUD</h2>
+
+                <h3>3.1. Canvas (2D & 3D)</h3>
+                <p>The primary workspace where you build and visualize your line. Navigation differs slightly between views:</p>
+                <ul>
+                    <li><strong>Panning (2D):</strong> Click and drag on an empty area of the canvas.</li>
+                    <li><strong>Zooming (2D):</strong> Use the mouse scroll wheel.</li>
+                    <li><strong>Orbiting (3D):</strong> Click and drag with the left mouse button.</li>
+                    <li><strong>Panning (3D):</strong> Click and drag with the right mouse button (or hold <span class="key">Ctrl</span> / <span class="key">Cmd</span> + left-click drag).</li>
+                    <li><strong>Zooming (3D):</strong> Use the mouse scroll wheel.</li>
+                </ul>
+           
+
+                <h3>3.2. HUD (Heads-Up Display)</h3>
+                <p>Displays real-time information about your design:</p>
+                <ul>
+                    <li><strong>Machines:</strong> Total count of machines placed.</li>
+                    <li><strong>Line Throughput:</strong> Estimated maximum throughput based on the slowest machine (bottleneck).</li>
+                    <li><strong>Est. Power:</strong> Sum of the power requirements for all placed machines.</li>
+                    <li><strong>Logic Issues:</strong> Number of potential problems identified (e.g., bottlenecks, height conflicts).</li>
+                    <li><strong>Coords (m):</strong> The X, Y coordinates (in meters) under the mouse cursor in the 2D view.</li>
+                </ul>
+            </section>
+
+            <!-- Section 4: Keyboard Shortcuts --><section id="shortcuts">
+                <h2>4. Keyboard Shortcuts & Mouse Actions</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>View</th>
+                            <th>Input</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Select Item</td>
+                            <td>2D/3D</td>
+                            <td>Click on an item (machine, pillar, door, platform).</td>
+                        </tr>
+                        <tr>
+                            <td>Select Connection</td>
+                            <td>2D Only</td>
+                            <td>Click on a connection line (it will turn blue).</td>
+                        </tr>
+                        <tr>
+                            <td>Move Item</td>
+                            <td>2D/3D</td>
+                            <td>Click and drag a selected item.</td>
+                        </tr>
+                        <tr>
+                            <td>Rotate Item</td>
+                            <td>2D/3D</td>
+                            <td>Select an item, then press the <span class="key">R</span> key (rotates 90° clockwise).</td>
+                        </tr>
+                        <tr>
+                            <td>Delete Item</td>
+                            <td>2D/3D</td>
+                            <td>Double-click on an item OR select and press <span class="key">Delete</span>.</td>
+                        </tr>
+                        <tr>
+                            <td>Delete Connection</td>
+                            <td>2D Only</td>
+                            <td>Select a connection line, then press the <span class="key">Delete</span> key.</td>
+                        </tr>
+                        <tr>
+                            <td>Cancel Link/Ruler Mode</td>
+                            <td>2D/3D</td>
+                            <td>Press the <span class="key">Esc</span> key.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 5: Basic Usage Manual --><section id="usage">
+                <h2>5. Basic Usage Manual</h2>
+                <ol>
+                    <li>
+                        <strong>Define Facility (Stage 1):</strong>
+                        Enter the Width, Length, and Height of your space. Click "Start Building" or "Load Project".
+                    </li>
+                    <li>
+                        <strong>Add Layout Elements (Stage 2):</strong>
+                        Use the "Pillar," "Door," and "Add Platform" buttons to add structural elements. Drag them into position.
+                    </li>
+                    <li>
+                        <strong>Place Machines (Stage 2):</strong>
+                        Drag machines from the Machine Library onto the 2D canvas. They will snap to the grid and automatically adjust to platform heights in 3D.
+                    </li>
+                    <li>
+                        <strong>Arrange Layout:</strong>
+                        Drag items to position them. Select an item and press <span class="key">R</span> to rotate. Use the <strong>Ruler</strong> tool to measure distances. Toggle to 3D view often to check clearances.
+                    </li>
+                    <li>
+                        <strong>Connect Machines (Link Mode):</strong>
+                        Activate <strong>Link Mode</strong> (it turns green). Click an orange (output) node, then a blue (input) node to connect. To delete a link, exit Link Mode, click the link line, and press <span class="key">Delete</span>.
+                    </li>
+                    <li>
+                        <strong>Analyze & Review (Stage 2/3):</strong>
+                        Monitor the HUD for basic stats. When ready, click "Analyze & Generate Proposal" to see a detailed breakdown in Stage 3.
+                    </li>
+                    <li>
+                        <strong>Iterate or Export:</strong>
+                        Click "Back to Builder" to make changes. Use "Export PNG" or "Save Project" to save your work. Click "Send to My KMK Architect" in Stage 3 to email the proposal.
+                    </li>
+                </ol>
+                <div class="note">
+                    <p>This guide provides a comprehensive overview. Experiment with the tools to become familiar with the workflow. <strong>Happy designing!</strong></p>
+                </div>
+            </section>
+        </div> <!-- .content-wrapper --></div> <!-- .container --></body>
+</html>
+
