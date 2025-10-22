@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMK Interactive Line Architect (3D V18 - Final)</title>
+    <title>KMK Interactive Line Architect (3D V19 - Save/Load)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,6 +86,10 @@
         .modal {
             transition: opacity 0.25s ease;
         }
+        /* Style for hidden file input */
+        #load-project-input {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased">
@@ -112,7 +116,10 @@
                     </div>
                 </div>
                 <p id="height-warning" class="text-yellow-400 text-sm mb-6 hidden">Warning: A ceiling height below 4 meters may restrict options for certain machine configurations like high-capacity bunkers or palletizers.</p>
-                <button id="start-building-btn" class="w-full bg-blue-600 text-white py-3 px-8 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">Start Building</button>
+                 <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="start-building-btn" class="w-full bg-blue-600 text-white py-3 px-8 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">Start Building</button>
+                    <button id="load-project-stage1-btn" class="w-full bg-gray-600 text-white py-3 px-8 rounded-full font-semibold hover:bg-gray-500 transition duration-300 shadow-lg">Load Project</button>
+                </div>
             </div>
         </div>
 
@@ -122,7 +129,7 @@
             <aside class="w-full md:w-80 bg-gray-800 p-4 overflow-y-auto flex-shrink-0">
                 <div class="flex justify-between items-center mb-4 gap-2">
                     <h2 class="text-xl font-bold text-white">Library</h2>
-                    <div>
+                    <div class="flex gap-1">
                         <button id="export-png-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-full transition">Export PNG</button>
                         <button id="reset-view-btn" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-1 px-3 rounded-full transition">Reset View</button>
                     </div>
@@ -153,6 +160,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ruler"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6c-1.2 1.2-3 1.3-4.2.2l-7-7c-1.2-1.2-1.2-3 0-4.2l2.6-2.6c.9-.9 2.2-.9 3.1 0l5.1 5.1Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/><path d="M7 16H3v-4"/><path d="M3 13V9"/><path d="M13 3h4v4"/><path d="M17 3h4"/></svg>
                             <span id="ruler-mode-text">Ruler</span>
                         </button>
+                    </div>
+                     <!-- Save/Load Buttons -->
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="save-project-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-indigo-700 hover:bg-indigo-600 rounded-md transition text-sm text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Save Project
+                        </button>
+                        <label for="load-project-input" class="w-full flex items-center justify-center gap-2 p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition text-sm text-white cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+                            Load Project
+                        </label>
+                        <input type="file" id="load-project-input" accept=".kmkproj">
                     </div>
                 </div>
 
@@ -632,6 +651,11 @@
             const messageBox = document.getElementById('message-box');
             const messageBoxText = document.getElementById('message-box-text');
             const messageBoxOk = document.getElementById('message-box-ok');
+
+            // --- Save/Load References ---
+            const saveProjectBtn = document.getElementById('save-project-btn');
+            const loadProjectInput = document.getElementById('load-project-input');
+            const loadProjectStage1Btn = document.getElementById('load-project-stage1-btn'); // Button in stage 1
 
 
             const linkModeBtn = document.getElementById('link-mode-btn');
@@ -2327,6 +2351,81 @@
                 }, 100);
             });
 
+             // --- Save/Load Functionality ---
+             const saveProject = () => {
+                const projectData = {
+                    facility: state.facility,
+                    items: state.items,
+                    connections: state.connections
+                };
+                const jsonString = JSON.stringify(projectData, null, 2); // Pretty print JSON
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'kmk-project.kmkproj';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const loadProject = (file) => {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const loadedData = JSON.parse(e.target.result);
+                        if (loadedData.facility && Array.isArray(loadedData.items) && Array.isArray(loadedData.connections)) {
+                            // Basic validation passed, load the data
+                            state.facility = loadedData.facility;
+                            state.items = loadedData.items;
+                            state.connections = loadedData.connections;
+                            
+                            // Ensure we are in the builder view
+                            goToStage(2); 
+
+                            // Update UI elements related to facility size if needed (e.g., in stage 1 inputs if we added a back button)
+                             document.getElementById('space-width').value = state.facility.width;
+                             document.getElementById('space-length').value = state.facility.length;
+                             document.getElementById('space-height').value = state.facility.height;
+
+                            // Refresh everything
+                            resizeCanvas(); // Important if facility dimensions changed
+                            updateHUD();
+                            draw(ctx2D);
+                            update3DScene(); // Make sure 3D scene is updated too
+                             if(scene) { // Re-center camera and controls if scene exists
+                                camera.position.set(state.facility.length / 2, 20, state.facility.width + 10);
+                                controls.target.set(state.facility.length / 2, 0, state.facility.width / 2);
+                                update3DWalls(); // Update walls if dimensions changed
+                            }
+
+                        } else {
+                            showMessage('Load Error', 'Invalid project file format.');
+                        }
+                    } catch (error) {
+                        console.error("Error loading project:", error);
+                        showMessage('Load Error', `Failed to parse project file: ${error.message}`);
+                    } finally {
+                        // Reset the input value so the same file can be loaded again
+                        loadProjectInput.value = ''; 
+                    }
+                };
+                reader.onerror = (e) => {
+                    console.error("Error reading file:", e);
+                    showMessage('Load Error', 'Could not read the selected file.');
+                     loadProjectInput.value = ''; // Reset on error too
+                };
+                reader.readAsText(file);
+            };
+
+            saveProjectBtn.addEventListener('click', saveProject);
+            loadProjectInput.addEventListener('change', (e) => loadProject(e.target.files[0]));
+             // Make the stage 1 load button also trigger the file input
+            loadProjectStage1Btn.addEventListener('click', () => loadProjectInput.click());
+
+
             window.addEventListener('resize', resizeCanvas);
 
             const updateCoords = (e) => {
@@ -2369,7 +2468,12 @@
                          data = { ...database.conveyors.items['CONV-CUSTOM'], notes: `Custom dimensions: ${inst.footprint.l}x${inst.footprint.w}m` };
                     }
                     else {
-                        data = database[inst.category].items[inst.id];
+                        // Ensure the item exists in the database before accessing properties
+                        data = database[inst.category]?.items[inst.id];
+                        if (!data) {
+                             console.warn(`Data not found for machine ID: ${inst.id} in category: ${inst.category}. Skipping analysis for this item.`);
+                             data = { throughput: Infinity, power: 0, price: 0, notes: 'Data Missing!' }; // Provide default data
+                        }
                     }
 
                     totalPower += data.power || 0;
@@ -2388,7 +2492,12 @@
                     if (bom[bomKey]) {
                         bom[bomKey].qty += 1; 
                     } else { 
-                        bom[bomKey] = { ...data, name: inst.name, id: inst.id, category: inst.category, qty: 1 };
+                        // Ensure data is defined before spreading
+                         if (data) {
+                           bom[bomKey] = { ...data, name: inst.name, id: inst.id, category: inst.category, qty: 1 };
+                        } else {
+                             bom[bomKey] = { name: inst.name, id: inst.id, category: inst.category, qty: 1, throughput: Infinity, power: 0, price: 0, notes: 'Data Missing!' };
+                        }
                     }
 
                     if (data.throughput < maxThroughput) {
@@ -2406,8 +2515,8 @@
                  if (machines.length === 1 && generateRecommendations) {
                     const machineData = machines[0];
                     let throughput = 'N/A';
-                    if (machineData.category !== 'custom') {
-                        const dbItem = database[machineData.category]?.items[machineData.id];
+                     if (machineData.category !== 'custom' && database[machineData.category]?.items[machineData.id]) {
+                        const dbItem = database[machineData.category].items[machineData.id];
                         if (dbItem && dbItem.throughput) {
                             throughput = dbItem.throughput;
                         }
@@ -2415,12 +2524,14 @@
                     const throughputText = throughput === 'N/A' ? 'N/A' : `${throughput.toFixed(1)} t/h`;
                     issues.push({type: 'info', text: `Single machine line. The throughput is defined by the **${machineData.name}** at **${throughputText}**.`});
                 } else if (bottleneckMachine && generateRecommendations) {
-                    const machineData = bottleneckMachine.category === 'custom' ? bottleneckMachine : database[bottleneckMachine.category].items[bottleneckMachine.id];
-                    const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
-                    issues.push({type: 'bottleneck', text: `The maximum line throughput is limited to **${throughputText}** by the **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
+                    const machineData = bottleneckMachine.category === 'custom' ? bottleneckMachine : database[bottleneckMachine.category]?.items[bottleneckMachine.id];
+                     if(machineData){ // Check if machineData exists
+                        const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+                         issues.push({type: 'bottleneck', text: `The maximum line throughput is limited to **${throughputText}** by the **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
+                    }
                 }
                 
-                return { issues, maxThroughput, totalPower, totalBudget, bom };
+                return { issues, maxThroughput: isFinite(maxThroughput) ? maxThroughput : 0, totalPower, totalBudget, bom };
             };
 
             const generateProposal = () => {
