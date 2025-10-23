@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMK Line Architect - Guide de l'utilisateur (V19)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Styles de Base --- */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa; /* Arrière-plan plus clair et net */
+            color: #343a40; /* Noir plus doux pour le texte */
+        }
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            overflow: hidden; /* Pour contenir le radius du héros */
+        }
+
+        /* --- En-tête Héros --- */
+        .hero {
+            background: linear-gradient(135deg, #005691 0%, #0073b7 100%);
+            color: white;
+            padding: 40px 40px 30px;
+        }
+        .hero h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 0;
+            border-bottom: none;
+        }
+        .hero p {
+            font-size: 1.1em;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 10px;
+            max-width: 80ch;
+        }
+        
+        /* --- Zone de Contenu --- */
+        .content-wrapper {
+            padding: 20px 40px 40px;
+        }
+
+        /* --- Typographie & Sections --- */
+        h2 {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #005691;
+            border-bottom: 3px solid #0073b7;
+            padding-bottom: 10px;
+            margin-top: 2.5em;
+            margin-bottom: 1.5em;
+        }
+        h2:first-child {
+            margin-top: 1em;
+        }
+        h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #0073b7;
+            border-bottom: none;
+            margin-top: 2em;
+            margin-bottom: 1em;
+        }
+        p, li {
+            font-size: 1rem;
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+
+        /* --- Éléments Interactifs & UI --- */
+        code, .key {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.9em;
+            border: 1px solid #dee2e6;
+        }
+        .key {
+            font-weight: 600;
+            box-shadow: 0 2px 0 #ced4da;
+            position: relative;
+            top: -1px;
+        }
+        .note {
+            background-color: #fff3cd; /* Jaune clair */
+            border-left: 5px solid #ffc107; /* Ambre */
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95em;
+        }
+        .note strong {
+            color: #664d03;
+        }
+        
+        /* --- Cartes de Fonctionnalités (Remplace .sidebar-section) --- */
+        .feature-card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        .feature-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+        }
+        .icon { /* Utilisation d'emoji directement en HTML pour la simplicité */
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        /* --- Tableau Stylisé --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden; /* Pour le border-radius sur le tableau */
+        }
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #005691;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr {
+            background-color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e9ecef; /* Survol subtil pour l'interactivité */
+        }
+
+        /* --- Style d'Image --- */
+        img.guide-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+            margin-bottom: 30px; /* Ajout d'espace sous l'image */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Section Héros --><header class="hero">
+            <h1>Architecte de Ligne KMK</h1>
+            <p>Guide de l'utilisateur (V19)</p>
+        </header>
+
+        <div class="content-wrapper">
+            <p style="font-size: 1.1em; color: #343a40;">Bienvenue dans l'Architecte de Ligne KMK, votre outil interactif pour concevoir et analyser des lignes de traitement personnalisées à l'aide des machines KMK. Ce guide vous présentera les fonctionnalités de la plateforme et comment les utiliser efficacement.</p>
+
+            <!-- Image ajoutée ici --><a href="https://freeimage.host/i/KU7qD9R"><img src="https://iili.io/KU7qD9R.md.jpg" alt="Aperçu de l'Architecte de Ligne KMK" class="guide-image" border="0"></a>
+
+
+            <!-- Section 1: Aperçu de la plateforme --><section id="overview">
+                <h2>1. Aperçu de la plateforme</h2>
+                <p>L'Architecte de Ligne KMK vous permet de :</p>
+                <ul>
+                    <li>Définir les dimensions de votre installation de production.</li>
+                    <li>Glisser-déposer des machines KMK et d'autres éléments (piliers, portes, plateformes) sur une zone de travail 2D.</li>
+                    <li>Visualiser votre conception à la fois en 2D (vue de dessus) et en vues 3D interactives.</li>
+                    <li>Connecter logiquement les machines pour simuler le flux de produits.</li>
+                    <li>Mesurer les distances au sein de votre aménagement.</li>
+                    <li>Analyser votre ligne pour détecter les goulots d'étranglement potentiels et estimer les spécifications clés (cadence, puissance).</li>
+                    <li>Sauvegarder votre progression et charger des projets existants.</li>
+                    <li>Générer une proposition préliminaire basée sur votre conception.</li>
+                </ul>
+            </section>
+
+            <!-- Section 2: Fonctionnalités et Outils --><section id="features">
+                <h2>2. Fonctionnalités et Outils (Barre latérale)</h2>
+
+                <div class="feature-card">
+                    <h3><span class="icon">🖥️</span>2.1. Vue et Disposition</h3>
+                    <ul>
+                        <li><strong>Exporter en PNG :</strong> Enregistre un instantané de la vue actuelle de la zone de travail 2D sous forme de fichier image PNG.</li>
+                        <li><strong>Réinitialiser la Vue :</strong> Réinitialise les paramètres de zoom et de panoramique de la vue actuelle (2D ou 3D) à l'état par défaut.</li>
+                        <li><strong>Sélecteur de Vue 2D/3D :</strong> Bascule entre la zone de travail 2D (vue de dessus) et la visualisation 3D interactive.</li>
+                        <li><strong>Bouton Pilier :</strong> Ouvre une fenêtre modale pour définir les dimensions (largeur, profondeur) d'un pilier structurel à ajouter à l'aménagement.</li>
+                        <li><strong>Bouton Porte :</strong> Ouvre une fenêtre modale pour définir les dimensions (largeur, épaisseur du mur, hauteur) d'une ouverture de porte à ajouter à l'aménagement.</li>
+                        <li><strong>Bouton Mode Lien :</strong> Active/désactive le mode de liaison. Lorsqu'il est actif (vert), cliquez sur les nœuds des machines pour créer des connexions. Le curseur se transforme en réticule.</li>
+                        <li><strong>Bouton Règle :</strong> Active/désactive l'outil de mesure. Lorsqu'il est actif (vert), cliquez sur deux points pour mesurer la distance entre eux.</li>
+                        <li><strong>Bouton Sauvegarder le Projet :</strong> Sauvegarde l'état actuel de votre conception dans un fichier <code>.kmkproj</code>.</li>
+                        <li><strong>Bouton Charger le Projet :</strong> Charge un fichier <code>.kmkproj</code> précédemment sauvegardé, remplaçant la conception actuelle.</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3><span class="icon">🔧</span>2.2. Bibliothèque de Machines</h3>
+                    <p>Contient une liste catégorisée des machines KMK, convoyeurs, plateformes et éléments utilitaires disponibles. Cliquez sur les en-têtes de catégorie pour développer/réduire les sections.</p>
+                    <ul>
+                        <li><strong>Glisser-Déposer :</strong> Cliquez et faites glisser les machines sur la zone de travail principale (vue 2D uniquement) pour les placer.</li>
+                        <li><strong>Éléments Personnalisés :</strong>
+                            <ul>
+                                <li><strong>Ajouter une Plateforme / Niveau :</strong> Définissez les dimensions pour les conceptions multiniveaux. Les machines placées sur les plateformes en 2D apparaîtront à la bonne élévation en 3D.</li>
+                                <li><strong>Convoyeur Personnalisé :</strong> Définissez un convoyeur avec une Longueur, une Largeur et des Hauteurs de début/fin spécifiques.</li>
+                                <li><strong>Ajouter une Machine Personnalisée :</strong> Définissez un bloc de substitution pour un équipement tiers ou non standard avec des dimensions personnalisées.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3><span class="icon">📊</span>2.3. Analyser et Générer une Proposition</h3>
+                    <p>Situé au bas de la barre latérale, cet outil analyse la conception actuelle de la ligne à la recherche de problèmes, calcule la cadence et la puissance estimées, et génère une proposition détaillée (Étape 3).</p>
+                    <div class="note">
+                        <p><strong>Remarque :</strong> Ce bouton est désactivé tant qu'au moins une machine n'est pas placée sur la zone de travail.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Zone de Travail et HUD --><section id="canvas-hud">
+                <h2>3. Zone de Travail Principale et HUD</h2>
+
+                <h3>3.1. Zone de Travail (2D & 3D)</h3>
+                <p>L'espace de travail principal où vous construisez et visualisez votre ligne. La navigation diffère légèrement entre les vues :</p>
+                <ul>
+                    <li><strong>Panoramique (2D) :</strong> Cliquez et faites glisser sur une zone vide de la zone de travail.</li>
+                    <li><strong>Zoom (2D) :</strong> Utilisez la molette de la souris.</li>
+                    <li><strong>Orbite (3D) :</strong> Cliquez et faites glisser avec le bouton gauche de la souris.</li>
+                    <li><strong>Panoramique (3D) :</strong> Cliquez et faites glisser avec le bouton droit de la souris (ou maintenez <span class="key">Ctrl</span> / <span class="key">Cmd</span> + glissement gauche).</li>
+                    <li><strong>Zoom (3D) :</strong> Utilisez la molette de la souris.</li>
+                </ul>
+           
+
+                <h3>3.2. HUD (Affichage Tête Haute)</h3>
+                <p>Affiche des informations en temps réel sur votre conception :</p>
+                <ul>
+                    <li><strong>Machines :</strong> Nombre total de machines placées.</li>
+                    <li><strong>Cadence Ligne :</strong> Cadence maximale estimée basée sur la machine la plus lente (goulot d'étranglement).</li>
+                    <li><strong>Puiss. Est. :</strong> Somme de la puissance requise pour toutes les machines placées.</li>
+                    <li><strong>Problèmes :</strong> Nombre de problèmes potentiels identifiés (par ex. goulots d'étranglement, conflits de hauteur).</li>
+                    <li><strong>Coordonnées (m) :</strong> Les coordonnées X, Y (en mètres) sous le curseur de la souris dans la vue 2D.</li>
+                </ul>
+            </section>
+
+            <!-- Section 4: Raccourcis Clavier --><section id="shortcuts">
+                <h2>4. Raccourcis Clavier et Actions Souris</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Vue</th>
+                            <th>Commande</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Sélectionner un élément</td>
+                            <td>2D/3D</td>
+                            <td>Cliquez sur un élément (machine, pilier, porte, plateforme).</td>
+                        </tr>
+                        <tr>
+                            <td>Sélectionner une connexion</td>
+                            <td>2D Uniquement</td>
+                            <td>Cliquez sur une ligne de connexion (elle deviendra bleue).</td>
+                        </tr>
+                        <tr>
+                            <td>Déplacer un élément</td>
+                            <td>2D/3D</td>
+                            <td>Cliquez et faites glisser un élément sélectionné.</td>
+                        </tr>
+                        <tr>
+                            <td>Pivoter un élément</td>
+                            <td>2D/3D</td>
+                            <td>Sélectionnez un élément, puis appuyez sur la touche <span class="key">R</span> (pivote de 90° dans le sens horaire).</td>
+                        </tr>
+                        <tr>
+                            <td>Supprimer un élément</td>
+                            <td>2D/3D</td>
+                            <td>Double-cliquez sur un élément OU sélectionnez-le et appuyez sur <span class="key">Suppr</span>.</td>
+                        </tr>
+                        <tr>
+                            <td>Supprimer une connexion</td>
+                            <td>2D Uniquement</td>
+                            <td>Sélectionnez une ligne de connexion, puis appuyez sur la touche <span class="key">Suppr</span>.</td>
+                        </tr>
+                        <tr>
+                            <td>Annuler le Mode Lien/Règle</td>
+                            <td>2D/3D</td>
+                            <td>Appuyez sur la touche <span class="key">Échap</span>.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 5: Manuel d'Utilisation --><section id="usage">
+                <h2>5. Manuel d'Utilisation de Base</h2>
+                <ol>
+                    <li>
+                        <strong>Définir l'Installation (Étape 1) :</strong>
+                        Entrez la Largeur, la Longueur et la Hauteur de votre espace. Cliquez sur "Commencer la Conception" ou "Charger un Projet".
+                    </li>
+                    <li>
+                        <strong>Ajouter des Éléments de Disposition (Étape 2) :</strong>
+                        Utilisez les boutons "Pilier", "Porte" et "Ajouter une Plateforme" pour ajouter des éléments structurels. Faites-les glisser en position.
+                    </li>
+                    <li>
+                        <strong>Placer les Machines (Étape 2) :</strong>
+                        Faites glisser les machines de la Bibliothèque de Machines sur la zone de travail 2D. Elles s'aligneront sur la grille et s'ajusteront automatiquement aux hauteurs de plateforme en 3D.
+                    </li>
+                    <li>
+                        <strong>Organiser la Disposition :</strong>
+                        Faites glisser les éléments pour les positionner. Sélectionnez un élément et appuyez sur <span class="key">R</span> pour le faire pivoter. Utilisez l'outil <strong>Règle</strong> pour mesurer les distances. Basculez souvent en vue 3D pour vérifier les dégagements.
+                    </li>
+                    <li>
+                        <strong>Connecter les Machines (Mode Lien) :</strong>
+                        Activez le <strong>Mode Lien</strong> (il devient vert). Cliquez sur un nœud orange (sortie), puis sur un nœud bleu (entrée) pour les connecter. Pour supprimer un lien, quittez le Mode Lien, cliquez sur la ligne du lien et appuyez sur <span class="key">Suppr</span>.
+                    </li>
+                    <li>
+                        <strong>Analyser et Vérifier (Étape 2/3) :</strong>
+                        Surveillez le HUD pour les statistiques de base. Lorsque vous êtes prêt, cliquez sur "Analyser et Générer une Proposition" pour voir une analyse détaillée à l'Étape 3.
+                    </li>
+                    <li>
+                        <strong>Itérer ou Exporter :</strong>
+                        Cliquez sur "Retour à l'Éditeur" pour apporter des modifications. Utilisez "Exporter en PNG" ou "Sauvegarder le Projet" pour enregistrer votre travail. Cliquez sur "Envoyer à mon Architecte KMK" à l'Étape 3 pour envoyer la proposition par e-mail.
+                    </li>
+                </ol>
+                <div class="note">
+                    <p>Ce guide offre un aperçu complet. Expérimentez avec les outils pour vous familiariser avec le flux de travail. <strong>Bonne conception !</strong></p>
+                </div>
+            </section>
+        </div> <!-- .content-wrapper --></div> <!-- .container --></body>
+</html>

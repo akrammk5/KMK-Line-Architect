@@ -1,0 +1,2654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecte de Ligne Interactif KMK (3D V19 - Sauvegarde/Chargement)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Librairie Three.js -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .sidebar-item-group {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .sidebar-item-group.open {
+            max-height: 1000px;
+        }
+        #canvas-container {
+            position: relative;
+            overflow: hidden;
+        }
+        #canvas-2d-container {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #374151;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: grab;
+        }
+         #canvas-2d-container.linking-active,
+         #canvas-2d-container.ruler-active {
+            cursor: crosshair;
+        }
+        #canvas-2d-container:active {
+            cursor: grabbing;
+        }
+        #canvas-2d-container.linking-active:active,
+        #canvas-2d-container.ruler-active:active {
+            cursor: crosshair;
+        }
+        #canvas-3d-container {
+             position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            cursor: grab;
+        }
+        #canvas-3d-container.linking-active,
+        #canvas-3d-container.ruler-active {
+            cursor: crosshair;
+        }
+        #canvas-3d-container:active {
+            cursor: grabbing;
+        }
+        #canvas-3d {
+            display: block;
+        }
+        .tooltip {
+            position: absolute;
+            display: none;
+            background-color: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+            border: 1px solid #4b5563;
+        }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        /* Masquer l'input de fichier */
+        #load-project-input {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+
+    <div id="app" class="flex flex-col h-screen">
+
+        <!-- Étape 1: Définir l'Espace -->
+        <div id="stage-1" class="flex items-center justify-center h-full p-4">
+            <div class="text-center bg-gray-800 p-8 md:p-12 rounded-2xl shadow-2xl max-w-2xl w-full">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-4">Bienvenue dans l'Architecte de Ligne KMK</h1>
+                <p class="text-gray-400 mb-8">Commençons par définir votre espace de production disponible. Ce sera la zone de travail pour votre ligne de traitement personnalisée.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
+                    <div>
+                        <label for="space-width" class="block text-sm font-medium text-gray-400 mb-1 text-left">Largeur Installation (m)</label>
+                        <input type="number" id="space-width" value="20" placeholder="ex: 20" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="space-length" class="block text-sm font-medium text-gray-400 mb-1 text-left">Longueur Installation (m)</label>
+                        <input type="number" id="space-length" value="40" placeholder="ex: 40" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="space-height" class="block text-sm font-medium text-gray-400 mb-1 text-left">Hauteur Installation (m)</label>
+                        <input type="number" id="space-height" value="6" placeholder="ex: 6" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <p id="height-warning" class="text-yellow-400 text-sm mb-6 hidden">Attention : Une hauteur de plafond inférieure à 4 mètres peut restreindre les options pour certaines configurations de machines comme les trémies haute capacité ou les palettiseurs.</p>
+                 <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="start-building-btn" class="w-full bg-blue-600 text-white py-3 px-8 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">Commencer la Conception</button>
+                    <button id="load-project-stage1-btn" class="w-full bg-gray-600 text-white py-3 px-8 rounded-full font-semibold hover:bg-gray-500 transition duration-300 shadow-lg">Charger un Projet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Étape 2: Construire Votre Ligne -->
+        <div id="stage-2" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
+            <!-- Barre Latérale -->
+            <aside class="w-full md:w-80 bg-gray-800 p-4 overflow-y-auto flex-shrink-0">
+                <div class="flex justify-between items-center mb-4 gap-2">
+                    <h2 class="text-xl font-bold text-white">Bibliothèque</h2>
+                    <div class="flex gap-1">
+                        <button id="export-png-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-full transition">Exporter PNG</button>
+                        <button id="reset-view-btn" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-1 px-3 rounded-full transition">Réinitialiser Vue</button>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-900/50 p-3 rounded-lg mb-4">
+                    <h3 class="text-base font-semibold text-white mb-2">Vue et Disposition</h3>
+                    <div class="flex items-center justify-center bg-gray-700 rounded-full p-1 mb-3">
+                        <button id="view-2d-btn" class="w-full text-xs py-1 rounded-full bg-blue-600 text-white">Vue 2D</button>
+                        <button id="view-3d-btn" class="w-full text-xs py-1 rounded-full text-gray-300">Vue 3D</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                         <button id="add-pillar-btn" class="flex items-center justify-center gap-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
+                            Pilier
+                        </button>
+                        <button id="add-door-btn" class="flex items-center justify-center gap-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"></path><path d="M2 20h20"></path><path d="M14 12v.01"></path></svg>
+                            Porte
+                        </button>
+                    </div>
+                     <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="link-mode-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-blue-800 hover:bg-blue-700 rounded-md transition text-sm text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                            <span id="link-mode-text">Mode Lien</span>
+                        </button>
+                        <button id="ruler-mode-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ruler"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6c-1.2 1.2-3 1.3-4.2.2l-7-7c-1.2-1.2-1.2-3 0-4.2l2.6-2.6c.9-.9 2.2-.9 3.1 0l5.1 5.1Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/><path d="M7 16H3v-4"/><path d="M3 13V9"/><path d="M13 3h4v4"/><path d="M17 3h4"/></svg>
+                            <span id="ruler-mode-text">Règle</span>
+                        </button>
+                    </div>
+                     <!-- Boutons Sauvegarder/Charger -->
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="save-project-btn" class="w-full flex items-center justify-center gap-2 p-2 bg-indigo-700 hover:bg-indigo-600 rounded-md transition text-sm text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Sauvegarder
+                        </button>
+                        <label for="load-project-input" class="w-full flex items-center justify-center gap-2 p-2 bg-gray-600 hover:bg-gray-500 rounded-md transition text-sm text-white cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+                            Charger
+                        </label>
+                        <input type="file" id="load-project-input" accept=".kmkproj">
+                    </div>
+                </div>
+
+                <h3 class="text-base font-semibold text-white mb-2">Bibliothèque de Machines</h3>
+                <div class="text-xs text-gray-400 mb-2">Glisser sur la zone. Double-clic pour supprimer. Sélection + 'R' pour pivoter.</div>
+                <div id="machine-library" class="space-y-2">
+                    <!-- Les catégories de machines seront injectées ici par JavaScript -->
+                </div>
+                <div class="mt-6 border-t border-gray-700 pt-4">
+                    <button id="analyze-line-btn" class="w-full bg-blue-600 text-white py-3 px-6 rounded-full font-semibold hover:bg-blue-700 transition duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed">Analyser et Générer la Proposition</button>
+                </div>
+            </aside>
+            <!-- Contenu Principal: Zone de Travail et HUD -->
+            <main class="flex-1 flex flex-col p-4 bg-gray-900 overflow-hidden">
+                <div id="canvas-hud" class="bg-gray-800 p-4 rounded-lg shadow-md mb-4 flex-shrink-0">
+                    <h3 class="text-lg font-bold text-white mb-2">Affichage Tête Haute (HUD)</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-400 block">Machines</span>
+                            <span id="hud-machines" class="font-semibold text-white">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 block">Cadence Ligne</span>
+                            <span id="hud-throughput" class="font-semibold text-white">0.0 t/h</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 block">Puiss. Est.</span>
+                            <span id="hud-power" class="font-semibold text-white">0.0 kW/h</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 block">Problèmes</span>
+                            <span id="hud-issues" class="font-semibold text-red-400">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 block">Coordonnées (m)</span>
+                            <span id="hud-coords" class="font-semibold text-white">X: 0.0, Y: 0.0</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="canvas-container" class="flex-1 rounded-lg shadow-inner w-full h-full">
+                    <div id="canvas-2d-container">
+                        <canvas id="line-canvas"></canvas>
+                    </div>
+                    <div id="canvas-3d-container">
+                         <canvas id="canvas-3d"></canvas>
+                    </div>
+                </div>
+                <div class="tooltip"></div>
+            </main>
+        </div>
+
+        <!-- Étape 3: Proposition -->
+        <div id="stage-3" class="hidden flex items-center justify-center h-full p-4">
+            <div id="proposal-content" class="bg-gray-800 p-8 md:p-12 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <h2 class="text-3xl font-extrabold text-white mb-4">Votre Proposition de Ligne Personnalisée</h2>
+                <p class="text-gray-400 mb-8">Basé sur votre conception, voici une analyse préliminaire détaillée de votre ligne de traitement personnalisée. Cette proposition peut être exportée et envoyée à notre équipe d'ingénierie pour un devis formel.</p>
+                
+                <section class="mb-6">
+                    <h4 class="text-xl font-bold mb-3 text-blue-400 border-b border-gray-700 pb-2">Analyse et Recommandations</h4>
+                    <div id="analysis-summary" class="text-gray-300 space-y-3"></div>
+                </section>
+
+                <section class="mb-6">
+                    <h4 class="text-xl font-bold mb-3 text-blue-400 border-b border-gray-700 pb-2">Nomenclature (BOM)</h4>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm text-gray-300">
+                            <thead class="text-xs text-gray-400 uppercase">
+                                <tr>
+                                    <th class="py-2 px-2">Qté</th>
+                                    <th class="py-2 px-2">Machine</th>
+                                    <th class="py-2 px-2">Modèle</th>
+                                    <th class="py-2 px-2">Remarques</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proposal-bom" class="bg-gray-900/50 rounded-lg"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="layout-section" class="mb-6 hidden">
+                    <h4 class="text-xl font-bold mb-3 text-blue-400 border-b border-gray-700 pb-2">Disposition des Machines</h4>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm text-gray-300">
+                            <thead class="text-xs text-gray-400 uppercase">
+                                <tr>
+                                    <th class="py-2 px-2">Machine</th>
+                                    <th class="py-2 px-2">Modèle</th>
+                                    <th class="py-2 px-2">Coordonnées (X, Y, Z)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proposal-layout" class="bg-gray-900/50 rounded-lg"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="mb-6">
+                    <h4 class="text-xl font-bold mb-3 text-blue-400 border-b border-gray-700 pb-2">Spécifications Estimées</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-900/50 rounded-lg">
+                        <div><span class="text-gray-400 block">Nombre de Machines</span><span id="spec-machines" class="font-semibold text-white text-lg"></span></div>
+                        <div><span class="text-gray-400 block">Cadence de la Ligne</span><span id="spec-throughput" class="font-semibold text-white text-lg"></span></div>
+                        <div><span class="text-gray-400 block">Consomm. Puiss. Est.</span><span id="spec-power" class="font-semibold text-white text-lg"></span></div>
+                    </div>
+                </section>
+
+                <div class="flex flex-col sm:flex-row justify-between gap-4 mt-8">
+                    <button id="back-to-builder-btn" class="w-full sm:w-auto bg-gray-700 text-white py-3 px-6 rounded-full font-semibold hover:bg-gray-600 transition">Retour à l'Éditeur</button>
+                    <button id="contact-team-btn" class="w-full sm:w-auto bg-blue-600 text-white py-3 px-6 rounded-full font-semibold hover:bg-blue-700 transition">Envoyer à mon Architecte KMK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modale pour Piliers et Portes -->
+    <div id="object-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 id="modal-title" class="text-xl font-bold text-white mb-4">Ajouter un Élément</h3>
+            <form id="object-form">
+                <div class="mb-4">
+                    <label id="modal-label-1" for="obj-width" class="block text-sm font-medium text-gray-400 mb-1">Largeur (m)</label>
+                    <input type="number" id="obj-width" value="0.5" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="mb-4">
+                    <label id="modal-label-2" for="obj-length" class="block text-sm font-medium text-gray-400 mb-1">Longueur/Profondeur (m)</label>
+                    <input type="number" id="obj-length" value="0.5" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                 <div id="door-height-group" class="mb-6 hidden">
+                    <label for="obj-height" class="block text-sm font-medium text-gray-400 mb-1">Hauteur (m)</label>
+                    <input type="number" id="obj-height" value="2.2" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="modal-cancel-btn" class="bg-gray-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-gray-500 transition">Annuler</button>
+                    <button type="submit" id="modal-add-btn" class="bg-blue-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-700 transition">Ajouter au Centre</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale pour Convoyeurs -->
+    <div id="conveyor-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 class="text-xl font-bold text-white mb-4">Configurer le Convoyeur</h3>
+            <p class="text-gray-400 text-sm mb-6">Définissez les dimensions souhaitées pour votre convoyeur personnalisé.</p>
+            <form id="conveyor-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="conv-length" class="block text-sm font-medium text-gray-400 mb-1">Longueur (m)</label>
+                        <input type="number" id="conv-length" value="3.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="conv-width" class="block text-sm font-medium text-gray-400 mb-1">Largeur (m)</label>
+                        <input type="number" id="conv-width" value="0.5" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                     <div>
+                        <label for="conv-height-a" class="block text-sm font-medium text-gray-400 mb-1">Hauteur Côté A (m)</label>
+                        <input type="number" id="conv-height-a" value="1.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="conv-height-b" class="block text-sm font-medium text-gray-400 mb-1">Hauteur Côté B (m)</label>
+                        <input type="number" id="conv-height-b" value="1.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" id="conveyor-modal-cancel-btn" class="bg-gray-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-gray-500 transition">Annuler</button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-700 transition">Ajouter le Convoyeur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modale pour Machines Personnalisées -->
+    <div id="custom-machine-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 class="text-xl font-bold text-white mb-4">Ajouter une Machine Personnalisée</h3>
+            <p class="text-gray-400 text-sm mb-6">Définissez votre équipement tiers ou personnalisé. Il sera rendu comme un simple bloc mais pourra être entièrement intégré à la ligne.</p>
+            <form id="custom-machine-form">
+                <div class="mb-4">
+                    <label for="custom-name" class="block text-sm font-medium text-gray-400 mb-1">Nom de la Machine</label>
+                    <input type="text" id="custom-name" placeholder="ex: 'Calibreuse Existante Client'" required class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label for="custom-length" class="block text-sm font-medium text-gray-400 mb-1">Longueur (m)</label>
+                        <input type="number" id="custom-length" value="2.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="custom-width" class="block text-sm font-medium text-gray-400 mb-1">Largeur (m)</label>
+                        <input type="number" id="custom-width" value="1.5" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                     <div>
+                        <label for="custom-height" class="block text-sm font-medium text-gray-400 mb-1">Hauteur (m)</label>
+                        <input type="number" id="custom-height" value="1.8" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" id="custom-machine-modal-cancel-btn" class="bg-gray-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-gray-500 transition">Annuler</button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-700 transition">Ajouter la Machine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modale pour Plateformes -->
+    <div id="platform-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 class="text-xl font-bold text-white mb-4">Ajouter une Plateforme / Niveau</h3>
+            <p class="text-gray-400 text-sm mb-6">Définissez une plateforme pour permettre une conception de ligne multiniveau. Les machines peuvent être placées sur les plateformes en vue 3D.</p>
+            <form id="platform-form">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label for="platform-length" class="block text-sm font-medium text-gray-400 mb-1">Longueur (m)</label>
+                        <input type="number" id="platform-length" value="5.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label for="platform-width" class="block text-sm font-medium text-gray-400 mb-1">Largeur (m)</label>
+                        <input type="number" id="platform-width" value="3.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                     <div>
+                        <label for="platform-height" class="block text-sm font-medium text-gray-400 mb-1">Hauteur de Surface (m)</label>
+                        <input type="number" id="platform-height" value="3.0" step="0.1" class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" id="platform-modal-cancel-btn" class="bg-gray-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-gray-500 transition">Annuler</button>
+                    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-full font-semibold hover:bg-blue-700 transition">Ajouter la Plateforme</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Boîte de Message Personnalisée -->
+    <div id="message-box" class="modal hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 id="message-box-title" class="text-xl font-bold text-yellow-400 mb-4">Avertissement de Placement</h3>
+            <p id="message-box-text" class="text-gray-300 mb-6"></p>
+            <button id="message-box-ok" class="bg-blue-600 text-white py-2 px-6 rounded-full font-semibold hover:bg-blue-700 transition">OK</button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const initialState = {
+                currentStage: 1,
+                facility: { width: 20, length: 40, height: 6 },
+                items: [], 
+                connections: [],
+                scale: 20, 
+                pan: { x: 50, y: 50 },
+                isPanning: false,
+                startPan: { x: 0, y: 0 },
+                draggingItem: null,
+                dragOffset: { x: 0, y: 0, z: 0 },
+                selectedItemId: null,
+                selectedConnectionId: null,
+                addingObjectType: null,
+                 linkingState: {
+                    active: false,
+                    startMachineId: null,
+                    startNodePosition2D: null, // Pour canvas 2D
+                    startNodePosition3D: null, // Pour scène 3D
+                },
+                rulerState: {
+                    active: false,
+                    startPoint2D: null, // {x, y} en coordonnées mondiales
+                    endPoint2D: null,   // {x, y} en coordonnées mondiales
+                    startPoint3D: null, // THREE.Vector3
+                    endPoint3D: null    // THREE.Vector3
+                },
+                view: '2d', // '2d' or '3d'
+            };
+            let state = { ...JSON.parse(JSON.stringify(initialState)) };
+            
+            // --- Base de Données COMPLÈTE des Machines (Traduction FR) ---
+            const database = {
+                intake: {
+                    name: 'Admission et Réception',
+                    color: '#3b82f6',
+                    items: {
+                        'KP-4014': { id: 'KP-4014', name: 'Trémie de Réception KP-4014', footprint: { l: 4.0, w: 2.8, h: 2.5 }, throughput: 25, power: 1.4, price: 18140, notes: 'Pour remorques, tapis largeur 1.4m.' },
+                        'KP-4016': { id: 'KP-4016', name: 'Trémie de Réception KP-4016', footprint: { l: 4.0, w: 3.0, h: 2.5 }, throughput: 30, power: 1.4, price: 19960, notes: 'Pour remorques, tapis largeur 1.6m.' },
+                        'WSD-14': { id: 'WSD-14', name: 'Basculeur-Doseur de Caisses WSD-14', footprint: { l: 4.3, w: 1.8, h: 2.8 }, throughput: 25, power: 3.5, price: 18500, notes: 'Pour caisses 1.4m. Basculeur & doseur.' },
+                        'WSD-16': { id: 'WSD-16', name: 'Basculeur-Doseur de Caisses WSD-16', footprint: { l: 4.5, w: 2.0, h: 2.8 }, throughput: 30, power: 3.5, price: 20110, notes: 'Pour caisses 1.6m. Basculeur & doseur.' },
+                        'WSD-18': { id: 'WSD-18', name: 'Basculeur-Doseur de Caisses WSD-18', footprint: { l: 4.6, w: 2.2, h: 2.8 }, throughput: 33, power: 3.5, price: 21300, notes: 'Pour caisses 1.8m. Basculeur & doseur.' },
+                        'WSD-20': { id: 'WSD-20', name: 'Basculeur-Doseur de Caisses WSD-20', footprint: { l: 4.7, w: 2.4, h: 2.8 }, throughput: 35, power: 3.5, price: 22500, notes: 'Pour caisses 2.0m. Basculeur & doseur.' },
+                        'WSD-22': { id: 'WSD-22', name: 'Basculeur-Doseur de Caisses WSD-22', footprint: { l: 4.7, w: 2.6, h: 2.8 }, throughput: 38, power: 3.5, price: 23700, notes: 'Pour caisses 2.2m. Basculeur & doseur.' },
+                        'WSD-24': { id: 'WSD-24', name: 'Basculeur-Doseur de Caisses WSD-24', footprint: { l: 4.8, w: 2.8, h: 2.8 }, throughput: 40, power: 3.5, price: 24490, notes: 'Pour caisses 2.4m. Basculeur & doseur.' },
+                        'WS-14': { id: 'WS-14', name: 'Basculeur Hydraulique WS-14', footprint: { l: 2.8, w: 1.6, h: 3.0 }, throughput: 18, power: 2.5, price: 11500, notes: 'Basculeur standard pour caisses 1.4m.' },
+                        'WS-16': { id: 'WS-16', name: 'Basculeur Hydraulique WS-16', footprint: { l: 2.8, w: 1.8, h: 3.0 }, throughput: 20, power: 2.5, price: 12220, notes: 'Basculeur standard pour caisses 1.6m.' },
+                        'WS-18': { id: 'WS-18', name: 'Basculeur Hydraulique WS-18', footprint: { l: 2.9, w: 2.0, h: 3.0 }, throughput: 22, power: 2.5, price: 13100, notes: 'Basculeur standard pour caisses 1.8m.' },
+                        'WS-20': { id: 'WS-20', name: 'Basculeur Hydraulique WS-20', footprint: { l: 2.9, w: 2.2, h: 3.0 }, throughput: 24, power: 2.5, price: 14000, notes: 'Basculeur standard pour caisses 2.0m.' },
+                        'WS-22': { id: 'WS-22', name: 'Basculeur Hydraulique WS-22', footprint: { l: 3.0, w: 2.4, h: 3.0 }, throughput: 26, power: 2.5, price: 14900, notes: 'Basculeur standard pour caisses 2.2m.' },
+                        'WS-24': { id: 'WS-24', name: 'Basculeur Hydraulique WS-24', footprint: { l: 3.0, w: 2.6, h: 3.0 }, throughput: 28, power: 2.5, price: 15800, notes: 'Basculeur standard pour caisses 2.4m.' },
+                        'WSE-14': { id: 'WSE-14', name: 'Basculeur Économique WSE-14', footprint: { l: 2.5, w: 1.6, h: 2.8}, throughput: 13, power: 2.5, price: 6900, notes: 'Compatible transpalette, caisses 1.4m.' },
+                        'WSE-16': { id: 'WSE-16', name: 'Basculeur Économique WSE-16', footprint: { l: 2.5, w: 1.8, h: 2.8}, throughput: 15, power: 2.5, price: 7460, notes: 'Compatible transpalette, caisses 1.6m.' },
+                        'WSE-18': { id: 'WSE-18', name: 'Basculeur Économique WSE-18', footprint: { l: 2.6, w: 2.0, h: 2.8}, throughput: 17, power: 2.5, price: 8100, notes: 'Compatible transpalette, caisses 1.8m.' },
+                    }
+                },
+                buffering: {
+                    name: 'Tamponnage et Dosage',
+                    color: '#10b981',
+                    items: {
+                        'BM-2020-2': {id: 'BM-2020-2', name: 'Trémie Modulaire BM-2020-2', h: 3.5, footprint: {l: 2.0, w: 2.0, h: 3.5}, throughput: 50, power: 2.2, price: 10070, notes: 'Tampon de 4.0 m³ de capacité.'},
+                        'BM-3040-4': {id: 'BM-3040-4', name: 'Trémie Modulaire BM-3040-4', h: 4.5, footprint: {l: 4.0, w: 3.0, h: 4.5}, throughput: 50, power: 3.0, price: 20420, notes: 'Tampon de 24.0 m³ de capacité.'},
+                        'BP-14': { id: 'BP-14', name: 'Trémie de Réception BP-14', h: 3.0, footprint: { l: 5.8, w: 2.8, h: 3.0 }, throughput: 30, power: 3.5, price: 19800, notes: 'Basculeur & trémie tout-en-un (6.5m³).' },
+                        'BP-16': { id: 'BP-16', name: 'Trémie de Réception BP-16', h: 3.2, footprint: { l: 6.0, w: 3.0, h: 3.2 }, throughput: 35, power: 3.5, price: 21380, notes: 'Basculeur & trémie tout-en-un (7.6m³).' },
+                        'BP-18': { id: 'BP-18', name: 'Trémie de Réception BP-18', h: 3.4, footprint: { l: 6.2, w: 3.2, h: 3.4 }, throughput: 40, power: 4.0, price: 23500, notes: 'Basculeur & trémie tout-en-un (8.7m³).' },
+                        'ZB-II-250/70': { id: 'ZB-II-250/70', name: 'Trémie Doseuse ZB-II-250/70', footprint: { l: 2.5, w: 1.2, h: 2.2 }, throughput: 18, power: 1.5, price: 6800, notes: 'Pour caisses/big-bags. Tapis 0.7m.' },
+                        'ZB-II-300/70': { id: 'ZB-II-300/70', name: 'Trémie Doseuse ZB-II-300/70', footprint: { l: 3.0, w: 1.2, h: 2.2 }, throughput: 20, power: 1.5, price: 7370, notes: 'Pour caisses/big-bags. Tapis 0.7m.' },
+                        'ZB-II-350/70': { id: 'ZB-II-350/70', name: 'Trémie Doseuse ZB-II-350/70', footprint: { l: 3.5, w: 1.2, h: 2.2 }, throughput: 22, power: 1.8, price: 8100, notes: 'Pour caisses/big-bags. Tapis 0.7m.' },
+                        'ZB-II-400/70': { id: 'ZB-II-400/70', name: 'Trémie Doseuse ZB-II-400/70', footprint: { l: 4.0, w: 1.2, h: 2.2 }, throughput: 25, power: 2.2, price: 8900, notes: 'Pour caisses/big-bags. Tapis 0.7m.' },
+                        'ZB-II-400/90': { id: 'ZB-II-400/90', name: 'Trémie Doseuse ZB-II-400/90', footprint: { l: 4.0, w: 1.4, h: 2.2 }, throughput: 30, power: 2.2, price: 9800, notes: 'Pour caisses/big-bags. Tapis 0.9m.' },
+                        'EF-100': {id: 'EF-100', name: 'Convoyeur de Flux Régulier EF-100', footprint: {l: 3.0, w: 1.5, h: 2.0}, throughput: 25, power: 2.5, price: 12750, notes: 'Régulateur de flux largeur 1.0m.'},
+                        'EF-125': {id: 'EF-125', name: 'Convoyeur de Flux Régulier EF-125', footprint: {l: 3.0, w: 1.7, h: 2.0}, throughput: 30, power: 2.5, price: 14500, notes: 'Régulateur de flux largeur 1.25m.'},
+                        'EF-150': { id: 'EF-150', name: 'Convoyeur de Flux Régulier EF-150', footprint: { l: 3.0, w: 2.0, h: 2.0 }, throughput: 35, power: 2.5, price: 16080, notes: 'Régulateur de flux largeur 1.5m.' },
+                    }
+                },
+                cleaning: {
+                    name: 'Pré-Nettoyage et Brossage',
+                    color: '#f97316',
+                    items: {
+                        'SZR-812': { id: 'SZR-812', name: 'Séparateur Spiralé SZR-812', footprint: { l: 2.5, w: 1.5, h: 1.8 }, throughput: 18, power: 7.0, price: 14810, notes: 'Pré-nettoie & pré-calibre petit calibre.', waste_output: true },
+                        'JC-20': { id: 'JC-20', name: 'Déterreur Horizontal (Hérisson) JC-20', footprint: { l: 2.5, w: 1.2, h: 1.5 }, throughput: 16, power: 2.5, price: 13500, notes: 'Retrait terre, mottes & fanes.', waste_output: true },
+                        'JC-25': { id: 'JC-25', name: 'Déterreur Horizontal (Hérisson) JC-25', footprint: { l: 2.5, w: 1.4, h: 1.5 }, throughput: 20, power: 3.0, price: 15060, notes: 'Retrait terre, mottes & fanes.', waste_output: true },
+                        'JC-30': { id: 'JC-30', name: 'Déterreur Horizontal (Hérisson) JC-30', footprint: { l: 2.5, w: 1.6, h: 1.5 }, throughput: 24, power: 3.5, price: 16800, notes: 'Retrait terre, mottes & fanes.', waste_output: true },
+                        'JV-80': {id: 'JV-80', name: 'Déterreur Vertical (Hérisson) JV-80', footprint: { l: 1.2, w: 1.1, h: 2.0 }, throughput: 15, power: 2.2, price: 5650, notes: 'Nettoie résidus de terre. Largeur 0.8m.', waste_output: true},
+                        'JV-120': {id: 'JV-120', name: 'Déterreur Vertical (Hérisson) JV-120', footprint: { l: 1.2, w: 1.5, h: 2.0 }, throughput: 22, power: 3.0, price: 7200, notes: 'Nettoie résidus de terre. Largeur 1.2m.', waste_output: true},
+                        'S-1055': { id: 'S-1055', name: 'Brosseuse S S-1055', footprint: { l: 2.5, w: 1.0, h: 1.4 }, throughput: 8, power: 3.0, price: 4200, notes: '10 brosses, largeur 55cm.' },
+                        'S-1280': { id: 'S-1280', name: 'Brosseuse S S-1280', footprint: { l: 3.0, w: 1.2, h: 1.4 }, throughput: 12, power: 4.0, price: 5110, notes: '12 brosses, largeur 80cm.' },
+                        'S-1480': { id: 'S-1480', name: 'Brosseuse S S-1480', footprint: { l: 3.0, w: 1.4, h: 1.4 }, throughput: 15, power: 4.5, price: 6300, notes: '14 brosses, largeur 80cm.' },
+                        'S-16110': { id: 'S-16110', name: 'Brosseuse S S-16110', footprint: { l: 3.5, w: 1.6, h: 1.4 }, throughput: 20, power: 5.5, price: 8200, notes: '16 brosses, largeur 110cm.' },
+                        'SP-18120': { id: 'SP-18120', name: 'Brosseuse SP Pro SP-18120', footprint: { l: 2.5, w: 1.6, h: 1.6 }, throughput: 15, power: 5.5, price: 18720, notes: '18 brosses, largeur 120cm.' },
+                        'SP-18200': { id: 'SP-18200', name: 'Brosseuse SP Pro SP-18200', footprint: { l: 3.2, w: 1.6, h: 1.6 }, throughput: 22, power: 7.5, price: 24500, notes: '18 brosses, longueur 200cm.' },
+                        'OS-1': {id: 'OS-1', name: 'Équeuteuse à Oignons OS-1', footprint: { l: 2.0, w: 1.3, h: 1.8 }, throughput: 4, power: 4.0, price: 14590, notes: '1 unité de coupe.', waste_output: true},
+                        'OS-2': {id: 'OS-2', name: 'Équeuteuse à Oignons OS-2', footprint: { l: 2.1, w: 1.5, h: 1.8 }, throughput: 8, power: 6.5, price: 21000, notes: '2 unités de coupe.', waste_output: true},
+                        'OS-3': { id: 'OS-3', name: 'Équeuteuse à Oignons OS-3', footprint: { l: 2.2, w: 1.7, h: 1.8 }, throughput: 12, power: 8.5, price: 27130, notes: '3 unités de coupe.', waste_output: true },
+                    }
+                },
+                washing: {
+                    name: 'Lavage et Polissage',
+                    color: '#0ea5e9',
+                    items: {
+                        'OW': { id: 'OW', name: 'Épierreur à Eau OW', footprint: { l: 4.0, w: 2.0, h: 2.5 }, throughput: 20, power: 7.7, price: 26670, notes: 'Retire les pierres avant lavage.', waste_output: true },
+                        'MD-2008': {id: 'MD-2008', name: 'Laveur à Tambour MD-2008', footprint: {l: 3.0, w: 1.4, h: 1.8}, throughput: 10, power: 2.2, price: 14180, notes: 'Tambour diamètre 0.8m.'},
+                        'MD-2512': {id: 'MD-2512', name: 'Laveur à Tambour MD-2512', footprint: {l: 3.5, w: 1.6, h: 2.2}, throughput: 18, power: 2.2, price: 19500, notes: 'Tambour diamètre 1.2m.'},
+                        'MD-3012': { id: 'MD-3012', name: 'Laveur à Tambour MD-3012', footprint: { l: 4.0, w: 1.8, h: 2.2 }, throughput: 25, power: 2.5, price: 24050, notes: 'Tambour diamètre 1.2m.' },
+                        'VS-1220': {id: 'VS-1220', name: 'Polisseuse à Tambour VS-1220', footprint: {l: 3.0, w: 1.6, h: 2.0}, throughput: 10, power: 11.0, price: 31430, notes: '12 brosses, 2m long.', requires_upstream: 'MD'},
+                        'VS-1420': {id: 'VS-1420', name: 'Polisseuse à Tambour VS-1420', footprint: {l: 3.0, w: 1.8, h: 2.0}, throughput: 12, power: 15.0, price: 42000, notes: '14 brosses, 2m long.', requires_upstream: 'MD'},
+                        'VS-1430': { id: 'VS-1430', name: 'Polisseuse à Tambour VS-1430', footprint: { l: 4.0, w: 1.8, h: 2.0 }, throughput: 15, power: 17.0, price: 53130, notes: '14 brosses, 3m long.', requires_upstream: 'MD' },
+                        'DR-1080': { id: 'DR-1080', name: 'Sécheur à Rouleaux DR-1080', footprint: { l: 2.5, w: 1.2, h: 1.6 }, throughput: 12, power: 1.0, price: 6500, notes: 'Sécheur largeur 0.8m.', requires_upstream: 'MD' },
+                        'DR-10100': { id: 'DR-10100', name: 'Sécheur à Rouleaux DR-10100', footprint: { l: 2.5, w: 1.4, h: 1.6 }, throughput: 15, power: 1.2, price: 7280, notes: 'Sécheur largeur 1.0m.', requires_upstream: 'MD' },
+                        'DR-10120': { id: 'DR-10120', name: 'Sécheur à Rouleaux DR-10120', footprint: { l: 2.8, w: 1.6, h: 1.6 }, throughput: 20, power: 1.4, price: 8100, notes: 'Sécheur largeur 1.2m.', requires_upstream: 'MD' },
+                        'DR-10150': { id: 'DR-10150', name: 'Sécheur à Rouleaux DR-10150', footprint: { l: 2.8, w: 1.9, h: 1.6 }, throughput: 25, power: 1.6, price: 9020, notes: 'Sécheur largeur 1.5m.', requires_upstream: 'MD' },
+                    }
+                },
+                sorting: {
+                    name: 'Calibrage et Triage',
+                    color: '#8b5cf6',
+                    items: {
+                        'SR-308': { id: 'SR-308', name: 'Calibreur à Rouleaux SR-308', footprint: { l: 5.5, w: 1.3, h: 1.8 }, throughput: 12, power: 2.2, price: 27670, notes: '3+1 fractions, largeur 0.8m.', waste_output: true },
+                        'SR-312': { id: 'SR-312', name: 'Calibreur à Rouleaux SR-312', footprint: { l: 5.5, w: 1.7, h: 1.8 }, throughput: 16, power: 2.5, price: 31000, notes: '3+1 fractions, largeur 1.2m.', waste_output: true },
+                        'SR-318': { id: 'SR-318', name: 'Calibreur à Rouleaux SR-318', footprint: { l: 6.0, w: 2.3, h: 1.8 }, throughput: 20, power: 3.0, price: 35500, notes: '3+1 fractions, largeur 1.8m.', waste_output: true },
+                        'SR-412': { id: 'SR-412', name: 'Calibreur à Rouleaux SR-412', footprint: { l: 5.8, w: 1.7, h: 1.8 }, throughput: 16, power: 2.8, price: 34000, notes: '4+1 fractions, largeur 1.2m.', waste_output: true },
+                        'SR-418': { id: 'SR-418', name: 'Calibreur à Rouleaux SR-418', footprint: { l: 6.0, w: 2.3, h: 1.8 }, throughput: 20, power: 3.0, price: 37420, notes: '4+1 fractions, largeur 1.8m.', waste_output: true },
+                        'SO-90': { id: 'SO-90', name: 'Calibreur à Tapis SO-90', footprint: { l: 2.8, w: 1.5, h: 1.6 }, throughput: 8, power: 3.0, price: 12020, notes: 'Tapis largeur 0.9m.', waste_output: true },
+                        'SO-120': { id: 'SO-120', name: 'Calibreur à Tapis SO-120', footprint: { l: 2.8, w: 1.8, h: 1.6 }, throughput: 12, power: 3.5, price: 14500, notes: 'Tapis largeur 1.2m.', waste_output: true },
+                        'T-2008': { id: 'T-2008', name: 'Table de Triage (Debout) T-2008', footprint: { l: 2.0, w: 1.2, h: 1.2 }, throughput: 5, power: 1.1, price: 4500, notes: '2.0m long, pour travail debout.', waste_output: true },
+                        'T-2510': { id: 'T-2510', name: 'Table de Triage (Debout) T-2510', footprint: { l: 2.5, w: 1.4, h: 1.2 }, throughput: 7, power: 1.1, price: 5060, notes: '2.5m long, pour travail debout.', waste_output: true },
+                        'T-3012': { id: 'T-3012', name: 'Table de Triage (Debout) T-3012', footprint: { l: 3.0, w: 1.6, h: 1.2 }, throughput: 9, power: 1.5, price: 5800, notes: '3.0m long, pour travail debout.', waste_output: true },
+                        'TS-2008': { id: 'TS-2008', name: 'Table de Triage (Assis) TS-2008', footprint: { l: 2.0, w: 1.2, h: 1.2 }, throughput: 4, power: 1.1, price: 5200, notes: '2.0m long, pour travail assis.', waste_output: true },
+                        'TS-2510': { id: 'TS-2510', name: 'Table de Triage (Assis) TS-2510', footprint: { l: 2.5, w: 1.4, h: 1.2 }, throughput: 6, power: 1.1, price: 5820, notes: '2.5m long, pour travail assis.', waste_output: true },
+                        'TS-3012': { id: 'TS-3012', name: 'Table de Triage (Assis) TS-3012', footprint: { l: 3.0, w: 1.6, h: 1.2 }, throughput: 8, power: 1.5, price: 6600, notes: '3.0m long, pour travail assis.', waste_output: true },
+                        'TB-2008': { id: 'TB-2008', name: 'Table de Triage à Tapis TB-2008', footprint: { l: 2.0, w: 1.2, h: 1.2 }, throughput: 5, power: 1.1, price: 4000, notes: 'Pour légumes racines.', waste_output: true },
+                        'TB-2510': { id: 'TB-2510', name: 'Table de Triage à Tapis TB-2510', footprint: { l: 2.5, w: 1.4, h: 1.2 }, throughput: 7, power: 1.1, price: 4510, notes: 'Pour légumes racines.', waste_output: true },
+                        'TB-3012': { id: 'TB-3012', name: 'Table de Triage à Tapis TB-3012', footprint: { l: 3.0, w: 1.6, h: 1.2 }, throughput: 9, power: 1.5, price: 5200, notes: 'Pour légumes racines.', waste_output: true },
+                        'TR-2008': { id: 'TR-2008', name: 'Table de Triage Avancée TR-2008', footprint: { l: 2.0, w: 1.2, h: 1.2 }, throughput: 6, power: 1.5, price: 8900, notes: 'Vitesse rouleaux/translation indép.', waste_output: true },
+                        'TR-2510': { id: 'TR-2510', name: 'Table de Triage Avancée TR-2510', footprint: { l: 2.5, w: 1.4, h: 1.2 }, throughput: 8, power: 1.5, price: 10070, notes: 'Vitesse rouleaux/translation indép.', waste_output: true },
+                        'TR-3012': { id: 'TR-3012', name: 'Table de Triage Avancée TR-3012', footprint: { l: 3.0, w: 1.6, h: 1.2 }, throughput: 10, power: 1.8, price: 11500, notes: 'Vitesse rouleaux/translation indép.', waste_output: true },
+                    }
+                },
+                weighing: {
+                    name: 'Pesage',
+                    color: '#e11d48',
+                    items: {
+                        'WR-30-MINI': { id: 'WR-30-MINI', name: 'Peseuse à Tapis WR-30-MINI', footprint: { l: 3.0, w: 1.0, h: 2.0 }, throughput: 4, power: 1.8, price: 7230, notes: 'Portions 2.5-30kg.' },
+                        'WR-30-MIDI': { id: 'WR-30-MIDI', name: 'Peseuse à Tapis WR-30-MIDI', footprint: { l: 3.2, w: 1.0, h: 2.0 }, throughput: 5, power: 1.8, price: 8500, notes: 'Portions 2.5-30kg.' },
+                        'WR-30': { id: 'WR-30', name: 'Peseuse à Tapis WR-30', footprint: { l: 3.3, w: 1.1, h: 2.0 }, throughput: 6, power: 2.0, price: 9800, notes: 'Portions 2.5-30kg.' },
+                        'WR-50': { id: 'WR-50', name: 'Peseuse à Tapis WR-50', footprint: { l: 3.5, w: 1.2, h: 2.0 }, throughput: 7, power: 2.0, price: 12100, notes: 'Portions 5-50kg.' },
+                        'WR-50-MAXI': { id: 'WR-50-MAXI', name: 'Peseuse à Tapis WR-50-MAXI', footprint: { l: 3.6, w: 1.2, h: 2.0 }, throughput: 8, power: 2.0, price: 14060, notes: 'Portions 5-50kg.' },
+                        'WK04': { id: 'WK04', name: 'Peseuse Associative WK04', h: 3.0, footprint: { l: 2.1, w: 1.7, h: 3.0 }, throughput: 5.5, power: 2.0, price: 19160, notes: '4 bennes pour petits paquets (1-10kg).' },
+                        'WK07': { id: 'WK07', name: 'Peseuse Associative WK07', h: 3.2, footprint: { l: 2.5, w: 2.5, h: 3.2 }, throughput: 9, power: 2.5, price: 35000, notes: '7 bennes, capacité moyenne (1-25kg).' },
+                        'WK09': { id: 'WK09', name: 'Peseuse Associative WK09', h: 3.4, footprint: { l: 2.6, w: 2.6, h: 3.4 }, throughput: 12, power: 3.0, price: 42000, notes: '9 bennes, haute capacité (1-25kg).' },
+                        'WK12': { id: 'WK12', name: 'Peseuse Associative WK12', h: 3.5, footprint: { l: 2.8, w: 2.8, h: 3.5 }, throughput: 16.5, power: 3.5, price: 51900, notes: '12 bennes, haute capacité (1-25kg).' },
+                        'WPS-50': {id: 'WPS-50', name: 'Peseuse Mat. en Vrac WPS-50', footprint: {l: 3.0, w: 1.0, h: 2.5}, throughput: 5, power: 1.8, price: 8800, notes: 'Pour remplir des sacs de matériaux en vrac.'}
+                    }
+                },
+                packing: {
+                    name: 'Emballage et Remplissage',
+                    color: '#ec4899',
+                    items: {
+                        'R1': { id: 'R1', name: 'Ensacheuse Raschel R1', footprint: { l: 4.4, w: 1.0, h: 2.2 }, throughput: 12, power: 3.2, price: 15140, notes: 'Sacs filet 2.5-25kg, simple fil.' },
+                        'R2': { id: 'R2', name: 'Ensacheuse Raschel R2', footprint: { l: 4.4, w: 1.0, h: 2.2 }, throughput: 12, power: 3.2, price: 22760, notes: 'Sacs filet 2.5-25kg, double fil.' },
+                        'F2': { id: 'F2', name: 'Ensacheuse Film PE F2', footprint: { l: 4.4, w: 0.9, h: 2.2 }, throughput: 10, power: 3.0, price: 24230, notes: 'Pour sacs poly 1-10kg. Inox.' },
+                        'APB-1': { id: 'APB-1', name: 'Ensacheuse Sacs Papier APB-1', footprint: { l: 3.5, w: 2.0, h: 2.4 }, throughput: 6, power: 2.8, price: 48000, notes: 'Ensacheuse auto pour sacs papier 2-10kg.' },
+                        'APB-2': { id: 'APB-2', name: 'Ensacheuse Sacs Papier APB-2', footprint: { l: 3.5, w: 2.0, h: 2.4 }, throughput: 8, power: 3.0, price: 55010, notes: 'Ensacheuse auto pour sacs papier 2-10kg.' },
+                        'SAB': {id: 'SAB', name: 'Ensacheuse Semi-Auto SAB', footprint: {l: 3.0, w: 0.8, h: 1.8}, throughput: 5, power: 1.0, price: 8490, notes: 'Tête de couture avec capteur photoélectrique.'},
+                        'BNS-1': {id: 'BNS-1', name: 'Remplisseur de Caisses BNS-1', footprint: {l: 2.8, w: 1.2, h: 2.0}, throughput: 12, power: 0.5, price: 4930, notes: '1 conteneur tampon.'},
+                        'BNS-2': { id: 'BNS-2', name: 'Remplisseur de Caisses BNS-2', footprint: { l: 3.0, w: 1.2, h: 2.0 }, throughput: 15, power: 0.5, price: 5990, notes: '2 conteneurs tampons.' },
+                        'NS': { id: 'NS', name: 'Remplisseur de Box NS', h: 3.0, footprint: {l: 3.5, w: 3.0, h: 3.0}, throughput: 40, power: 3.5, price: 19250, notes: 'Remplissage doux pour box standards.'},
+                        'NSP': { id: 'NSP', name: 'Remplisseur de Box H-Cap NSP', h: 2.56, footprint: {l: 4.23, w: 2.24, h: 2.56}, throughput: 55, power: 3.5, price: 24290, notes: 'Haute vitesse, ajustable pour divers box.'},
+                        'NB-1': {id: 'NB-1', name: 'Remplisseur Universel NB-1', footprint: { l: 3.2, w: 2.8, h: 3.5 }, throughput: 35, power: 1.0, price: 7710, notes: '1 unité de remplissage pour big-bags & box.'},
+                        'NB-2': { id: 'NB-2', name: 'Remplisseur Universel NB-2', footprint: { l: 3.5, w: 3.0, h: 3.5 }, throughput: 40, power: 2.5, price: 14590, notes: '2 unités de remplissage pour big-bags & box.' },
+                    }
+                },
+                palletizing: {
+                    name: 'Fin de Ligne',
+                    color: '#d946ef',
+                    items: {
+                        'AP-15': { id: 'AP-15', name: 'Palettiseur Automatique AP-15', h: 4.0, footprint: { l: 6.0, w: 4.5, h: 4.0 }, throughput: 50, power: 35, price: 141090, notes: '15 sacs/min.' },
+                        'AP-25': { id: 'AP-25', name: 'Palettiseur Automatique AP-25', h: 4.2, footprint: { l: 6.5, w: 5.0, h: 4.2 }, throughput: 50, power: 40, price: 185640, notes: '25 sacs/min.' },
+                        'GT': {id: 'GT', name: 'Banderoleuse de Palettes GT', footprint: {l: 2.5, w: 1.5, h: 2.2}, throughput: 50, power: 1.5, price: 11140, notes: 'Chargement manuel des palettes.'},
+                        'GTP': { id: 'GTP', name: 'Banderoleuse Auto GTP', footprint: { l: 3.5, w: 1.5, h: 2.2 }, throughput: 50, power: 1.5, price: 23820, notes: 'Chargement auto via convoyeur.'},
+                        'TO-120': { id: 'TO-120', name: 'Table Rotative TO-120', footprint: { l: 1.2, w: 1.2, h: 0.8 }, throughput: 20, power: 0.25, price: 1430, notes: 'Tampon diamètre 1.2m.' },
+                        'TO-150': { id: 'TO-150', name: 'Table Rotative TO-150', footprint: { l: 1.5, w: 1.5, h: 0.8 }, throughput: 20, power: 0.25, price: 1610, notes: 'Tampon diamètre 1.5m.' },
+                        'FP': { id: 'FP', name: 'Guide de Palettisation FP', footprint: {l: 1.3, w: 1.0, h: 1.5}, throughput: 20, power: 0, price: 1690, notes: 'Guide manuel pour empilage sur palette.'}
+                    }
+                },
+                conveyors: {
+                    name: 'Convoyeurs et Plateformes',
+                    color: '#64748b',
+                    items: {
+                        'PLATFORM-CUSTOM': { id: 'PLATFORM-CUSTOM', name: 'Ajouter Plateforme / Niveau', footprint: { l: 5.0, w: 3.0, h: 3.0 }, throughput: 0, power: 0, price: 0, notes: 'Plateforme configurable pour conceptions multiniveaux.' },
+                        'CONV-CUSTOM': { id: 'CONV-CUSTOM', name: 'Convoyeur Personnalisé', footprint: { l: 3.0, w: 0.5, h_a: 1.0, h_b: 1.0 }, throughput: 50, power: 0.75, price: 2950, notes: 'Convoyeur configurable personnalisé.' },
+                        'P-300/50-H': { id: 'P-300/50-H', name: 'Convoyeur Horizontal P-300/50-H', footprint: { l: 3.0, w: 0.5, h: 1.0 }, throughput: 50, power: 0.75, price: 2950, notes: '3.0m x 0.5m horizontal.' },
+                        'P-500/70-H': { id: 'P-500/70-H', name: 'Convoyeur Horizontal P-500/70-H', footprint: { l: 5.0, w: 0.7, h: 1.0 }, throughput: 50, power: 0.75, price: 4620, notes: '5.0m x 0.7m horizontal.' },
+                        'P-300/50-E': { id: 'P-300/50-E', name: 'Convoyeur Élévateur P-300/50-E', h: 2.5, footprint: { l: 3.0, w: 0.6, h: 2.5 }, throughput: 40, power: 1.1, price: 3420, notes: '3.0m x 0.5m élévateur.' },
+                        'PLM': {id: 'PLM', name: 'Convoyeur Mobile Léger PLM', h: 3.0, footprint: {l: 5.0, w: 0.8, h: 3.0}, throughput: 40, power: 2.2, price: 6560, notes: 'Convoyeur élévateur mobile.'},
+                        'NK-4': { id: 'NK-4', name: 'Amortisseur de Chute NK-4', footprint: { l: 0.8, w: 0.6, h: 1.5 }, throughput: 50, power: 0.5, price: 4200, notes: 'Amortisseur de chute auto (4 pales).' },
+                        'NK-8': { id: 'NK-8', name: 'Amortisseur de Chute NK-8', footprint: { l: 0.8, w: 1.0, h: 1.5 }, throughput: 50, power: 0.5, price: 5000, notes: 'Amortisseur de chute auto (8 pales).' },
+                        'NK-12': { id: 'NK-12', name: 'Amortisseur de Chute NK-12', footprint: { l: 0.8, w: 1.4, h: 1.5 }, throughput: 50, power: 0.7, price: 5800, notes: 'Amortisseur de chute auto (12 pales).' },
+                        'NK-18': { id: 'NK-18', name: 'Amortisseur de Chute NK-18', footprint: { l: 0.8, w: 2.0, h: 1.5 }, throughput: 50, power: 0.7, price: 7100, notes: 'Amortisseur de chute auto (18 pales).' },
+                    }
+                },
+                utility: {
+                    name: 'Utilitaires et Logistique',
+                    color: '#a8a29e',
+                    items: {
+                        'CUSTOM-MACHINE': { id: 'CUSTOM-MACHINE', name: 'Ajouter Machine Perso.', footprint: { l: 1, w: 1, h: 1 }, isAction: true },
+                        'WASTE-BIN': { id: 'WASTE-BIN', name: 'Benne à Déchets', footprint: { l: 1.2, w: 1.0, h: 1.0 }, throughput: 0, power: 0, price: 0, notes: 'Conteneur standard pour déchets/rebuts.' },
+                    }
+                },
+            };
+
+            const stage1 = document.getElementById('stage-1');
+            const stage2 = document.getElementById('stage-2');
+            const stage3 = document.getElementById('stage-3');
+            const canvasContainer = document.getElementById('canvas-container');
+            const canvas2DContainer = document.getElementById('canvas-2d-container');
+            const canvas2D = document.getElementById('line-canvas');
+            const ctx2D = canvas2D.getContext('2d');
+            const canvas3DContainer = document.getElementById('canvas-3d-container');
+            const canvas3D = document.getElementById('canvas-3d');
+            const tooltip = document.querySelector('.tooltip');
+            
+            // --- Références Modales ---
+            const objectModal = document.getElementById('object-modal');
+            const objectForm = document.getElementById('object-form');
+            const conveyorModal = document.getElementById('conveyor-modal');
+            const conveyorForm = document.getElementById('conveyor-form');
+            const customMachineModal = document.getElementById('custom-machine-modal');
+            const customMachineForm = document.getElementById('custom-machine-form');
+            const platformModal = document.getElementById('platform-modal');
+            const platformForm = document.getElementById('platform-form');
+            const messageBox = document.getElementById('message-box');
+            const messageBoxText = document.getElementById('message-box-text');
+            const messageBoxOk = document.getElementById('message-box-ok');
+
+            // --- Références Sauvegarde/Chargement ---
+            const saveProjectBtn = document.getElementById('save-project-btn');
+            const loadProjectInput = document.getElementById('load-project-input');
+            const loadProjectStage1Btn = document.getElementById('load-project-stage1-btn'); // Bouton étape 1
+
+
+            const linkModeBtn = document.getElementById('link-mode-btn');
+            const linkModeText = document.getElementById('link-mode-text');
+            const rulerModeBtn = document.getElementById('ruler-mode-btn');
+
+            // --- Configuration Scène 3D ---
+            let scene, camera, renderer, controls, raycaster, mouse;
+            let plane, grid, walls, connectionMeshes, nodeMeshes;
+            let rulerLine, rulerStartSphere, rulerEndSphere, rulerLabel;
+            const threeObjects = new Map();
+            let drag3DItem = null;
+            const WALL_THICKNESS = 0.2;
+
+            // --- STOCKAGE TEMP pour modales ---
+            let tempDropData = null;
+            
+            // --- Utilitaires de Performance ---
+            const throttle = (func, limit) => {
+                let inThrottle;
+                return function() {
+                    const args = arguments;
+                    const context = this;
+                    if (!inThrottle) {
+                        func.apply(context, args);
+                        inThrottle = true;
+                        setTimeout(() => inThrottle = false, limit);
+                    }
+                }
+            };
+
+            const showMessage = (title, text) => {
+                messageBox.querySelector('h3').textContent = title;
+                messageBoxText.innerHTML = text.replace(/\n/g, '<br>');
+                messageBox.classList.remove('hidden');
+            }
+
+            messageBoxOk.addEventListener('click', () => {
+                messageBox.classList.add('hidden');
+            });
+
+            const init3D = () => {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x374151);
+
+                camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+                camera.position.set(state.facility.length / 2, 20, state.facility.width + 10);
+                
+                renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true });
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                renderer.shadowMap.enabled = true;
+
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.target.set(state.facility.length / 2, 0, state.facility.width / 2);
+                controls.update();
+                
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(20, 30, 10);
+                directionalLight.castShadow = true;
+                scene.add(directionalLight);
+
+                plane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(state.facility.length, state.facility.width),
+                    new THREE.MeshStandardMaterial({ color: 0x4b5563, transparent: true, opacity: 0.5 })
+                );
+                plane.rotation.x = -Math.PI / 2;
+                plane.position.set(state.facility.length / 2, 0, state.facility.width / 2);
+                plane.userData.isGround = true; // Pour raycasting
+                scene.add(plane);
+
+                grid = new THREE.GridHelper(Math.max(state.facility.length, state.facility.width) + 20, Math.max(state.facility.length, state.facility.width) + 20);
+                grid.position.set(state.facility.length/2, 0.01, state.facility.width/2);
+                scene.add(grid);
+
+                walls = new THREE.Group();
+                scene.add(walls);
+                update3DWalls();
+
+                connectionMeshes = new THREE.Group();
+                scene.add(connectionMeshes);
+                nodeMeshes = new THREE.Group();
+                scene.add(nodeMeshes);
+
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
+
+                add3DEventListeners();
+                animate3D();
+            };
+            
+            const update3DWalls = () => {
+                walls.clear();
+                const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x6b7280, transparent: true, opacity: 0.5 });
+                const {width, length, height} = state.facility;
+
+                // Mur arrière
+                const backWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, WALL_THICKNESS), wallMaterial);
+                backWall.position.set(length/2, height/2, -WALL_THICKNESS/2);
+                walls.add(backWall);
+
+                // Mur avant
+                const frontWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, WALL_THICKNESS), wallMaterial);
+                frontWall.position.set(length/2, height/2, width + WALL_THICKNESS/2);
+                walls.add(frontWall);
+
+                // Mur gauche
+                const leftWall = new THREE.Mesh(new THREE.BoxGeometry(WALL_THICKNESS, height, width), wallMaterial);
+                leftWall.position.set(-WALL_THICKNESS/2, height/2, width/2);
+                walls.add(leftWall);
+
+                // Mur droit
+                const rightWall = new THREE.Mesh(new THREE.BoxGeometry(WALL_THICKNESS, height, width), wallMaterial);
+                rightWall.position.set(length + WALL_THICKNESS/2, height/2, width/2);
+                walls.add(rightWall);
+            };
+
+            const animate3D = () => {
+                requestAnimationFrame(animate3D);
+                controls.update();
+                renderer.render(scene, camera);
+            };
+
+            const createSlantedConveyorGeometry = (l, w, h_a, h_b) => {
+                const geometry = new THREE.BufferGeometry();
+                const halfL = l / 2;
+                const halfW = w / 2;
+
+                const vertices = new Float32Array([
+                    // Face inférieure (à y=0)
+                    -halfL, 0, -halfW, // 0
+                     halfL, 0, -halfW, // 1
+                     halfL, 0,  halfW, // 2
+                    -halfL, 0,  halfW, // 3
+
+                    // Face supérieure (inclinée)
+                    -halfL, h_a, -halfW, // 4
+                     halfL, h_b, -halfW, // 5
+                     halfL, h_b,  halfW, // 6
+                    -halfL, h_a,  halfW, // 7
+                ]);
+
+                const indices = [
+                    0, 1, 2, 0, 2, 3, // bas
+                    4, 6, 5, 4, 7, 6, // haut
+                    3, 2, 6, 3, 6, 7, // avant
+                    0, 4, 5, 0, 5, 1, // arrière
+                    0, 3, 7, 0, 7, 4, // gauche
+                    1, 5, 6, 1, 6, 2  // droite
+                ];
+
+                geometry.setIndex(indices);
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                geometry.computeVertexNormals();
+                return geometry;
+            }
+
+            function createRulerLabel(text) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = 'bold 48px Inter';
+                const textMetrics = context.measureText(text);
+                canvas.width = textMetrics.width + 20;
+                canvas.height = 64;
+                
+                context.font = 'bold 48px Inter'; // Le font doit être réappliqué après redimensionnement
+                context.fillStyle = 'rgba(0,0,0,0.7)';
+                context.fillRect(0,0, canvas.width, canvas.height);
+                context.fillStyle = '#facc15';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width/2, canvas.height/2);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(canvas.width / 100, canvas.height / 100, 1.0);
+                return sprite;
+            }
+
+            const update3DScene = () => {
+                if (!scene) return;
+                const objectsToRemove = new Set(threeObjects.keys());
+                
+                nodeMeshes.clear();
+
+                state.items.forEach(item => {
+                    objectsToRemove.delete(item.instanceId);
+                    const footprint = getItemFootprint(item);
+                    if (!footprint) return;
+
+                    let mesh = threeObjects.get(item.instanceId);
+                    
+                    const isConveyor = item.id === 'CONV-CUSTOM';
+                    const h_a = isConveyor ? (footprint.h_a || 1.0) : (footprint.h || 1.5);
+                    const h_b = isConveyor ? (footprint.h_b || 1.0) : (footprint.h || 1.5);
+                    let itemHeight;
+                    if (item.type === 'pillar') itemHeight = state.facility.height;
+                    else if (item.type === 'platform') itemHeight = footprint.h;
+                    else itemHeight = Math.max(h_a, h_b);
+                    
+                    
+                    if (!mesh || mesh.userData.footprint.l !== footprint.l || mesh.userData.footprint.w !== footprint.w || mesh.userData.footprint.h_a !== h_a || mesh.userData.footprint.h_b !== h_b) {
+                        if(mesh) scene.remove(mesh);
+                        
+                        let geometry;
+                        if(isConveyor) {
+                            geometry = createSlantedConveyorGeometry(footprint.l, footprint.w, h_a, h_b);
+                        } else {
+                            geometry = new THREE.BoxGeometry(footprint.l, itemHeight, footprint.w);
+                            // Translater la géométrie pour que l'origine soit au centre en bas
+                            geometry.translate(0, itemHeight / 2, 0);
+                        }
+
+                        const isPlatform = item.type === 'platform';
+                        const color = item.type === 'pillar' ? 0x6b7280 
+                            : (item.type === 'door' ? 0x4b5563 
+                            : (isPlatform ? 0x475569 // slate-600
+                            : (item.category === 'custom' ? 0x9ca3af
+                            : new THREE.Color(database[item.category]?.color || '#ffffff'))));
+
+                        const material = new THREE.MeshStandardMaterial({ 
+                            color,
+                            transparent: isPlatform,
+                            opacity: isPlatform ? 0.6 : 1.0
+                        });
+                        mesh = new THREE.Mesh(geometry, material);
+                        mesh.userData.instanceId = item.instanceId;
+                        mesh.userData.footprint = { ...footprint, h_a, h_b };
+                        if (isPlatform) {
+                            mesh.userData.isPlatform = true;
+                            mesh.userData.surfaceY = footprint.h;
+                        }
+                        scene.add(mesh);
+                        threeObjects.set(item.instanceId, mesh);
+                    }
+                    
+                    const isSelected = item.instanceId === state.selectedItemId;
+                    mesh.material.emissive.setHex(isSelected ? 0x60a5fa : 0x000000);
+
+                     mesh.position.set(
+                        item.x + footprint.l / 2,
+                        item.elevation || 0,
+                        item.y + footprint.w / 2
+                    );
+                    mesh.rotation.y = -item.rotation * Math.PI / 180;
+
+                    if (state.linkingState.active && item.type === 'machine') {
+                        const nodes = getMachineNodes(item);
+                        const nodeGeo = new THREE.SphereGeometry(0.15, 16, 16);
+                        
+                        const itemElevation = item.elevation || 0;
+
+                        const inMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+                        const inNode = new THREE.Mesh(nodeGeo, inMat);
+                        inNode.position.set(nodes.in.x3d, h_a + itemElevation, nodes.in.z3d);
+                        inNode.userData = { machineId: item.instanceId, type: 'in' };
+                        nodeMeshes.add(inNode);
+
+                        const outMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+                        const outNode = new THREE.Mesh(nodeGeo, outMat);
+                        outNode.position.set(nodes.out.x3d, h_b + itemElevation, nodes.out.z3d);
+                        outNode.userData = { machineId: item.instanceId, type: 'out' };
+                        nodeMeshes.add(outNode);
+                    }
+                });
+
+                objectsToRemove.forEach(id => {
+                    const obj = threeObjects.get(id);
+                    if (obj) {
+                         obj.geometry.dispose();
+                         obj.material.dispose();
+                         scene.remove(obj);
+                    }
+                    threeObjects.delete(id);
+                });
+
+                // --- Règle 3D ---
+                if (rulerLine) scene.remove(rulerLine);
+                if (rulerStartSphere) scene.remove(rulerStartSphere);
+                if (rulerEndSphere) scene.remove(rulerEndSphere);
+                if (rulerLabel) scene.remove(rulerLabel);
+
+                if (state.rulerState.active && state.rulerState.startPoint3D) {
+                    const points = [state.rulerState.startPoint3D, state.rulerState.endPoint3D];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineDashedMaterial({ color: 0xfacc15, dashSize: 0.2, gapSize: 0.1 });
+                    rulerLine = new THREE.Line(geometry, material);
+                    rulerLine.computeLineDistances();
+                    scene.add(rulerLine);
+
+                    const sphereGeo = new THREE.SphereGeometry(0.1, 16, 16);
+                    const sphereMat = new THREE.MeshBasicMaterial({color: 0xfacc15});
+
+                    rulerStartSphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    rulerStartSphere.position.copy(state.rulerState.startPoint3D);
+                    scene.add(rulerStartSphere);
+                    
+                    rulerEndSphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    rulerEndSphere.position.copy(state.rulerState.endPoint3D);
+                    scene.add(rulerEndSphere);
+                    
+                    const distance = state.rulerState.startPoint3D.distanceTo(state.rulerState.endPoint3D);
+                    if (distance > 0.01) {
+                        rulerLabel = createRulerLabel(`${distance.toFixed(2)} m`);
+                        const midPoint = new THREE.Vector3().addVectors(state.rulerState.startPoint3D, state.rulerState.endPoint3D).multiplyScalar(0.5);
+                        midPoint.y += 0.5; // Soulever l'étiquette au-dessus de la ligne
+                        rulerLabel.position.copy(midPoint);
+                        scene.add(rulerLabel);
+                    }
+                }
+
+                update3DConnections();
+            };
+
+             const update3DConnections = () => {
+                connectionMeshes.clear();
+                const lineMaterial = new THREE.LineDashedMaterial({ color: 0x9ca3af, linewidth: 2, dashSize: 0.3, gapSize: 0.15 });
+                const selectedLineMaterial = new THREE.LineBasicMaterial({ color: 0x60a5fa, linewidth: 4 });
+
+                state.connections.forEach(conn => {
+                    const fromMachine = state.items.find(m => m.instanceId === conn.from);
+                    const toMachine = state.items.find(m => m.instanceId === conn.to);
+                    if (!fromMachine || !toMachine) return;
+                    
+                    const fromFootprint = getItemFootprint(fromMachine);
+                    const toFootprint = getItemFootprint(toMachine);
+                    
+                    const fromNodeHeight = fromMachine.id === 'CONV-CUSTOM' ? (fromFootprint.h_b || 1.0) : (fromFootprint.h || 1.5);
+                    const fromHeight = (fromMachine.elevation || 0) + fromNodeHeight;
+
+                    const toNodeHeight = toMachine.id === 'CONV-CUSTOM' ? (toFootprint.h_a || 1.0) : (toFootprint.h || 1.5);
+                    const toHeight = (toMachine.elevation || 0) + toNodeHeight;
+
+
+                    const fromNodes = getMachineNodes(fromMachine);
+                    const toNodes = getMachineNodes(toMachine);
+                    
+                    const startPoint = new THREE.Vector3(fromNodes.out.x3d, fromHeight, fromNodes.out.z3d);
+                    const endPoint = new THREE.Vector3(toNodes.in.x3d, toHeight, toNodes.in.z3d);
+                    
+                    const midPoint = new THREE.Vector3().addVectors(startPoint, endPoint).multiplyScalar(0.5);
+                    midPoint.y += 1;
+
+                    const curve = new THREE.QuadraticBezierCurve3(startPoint, midPoint, endPoint);
+                    const points = curve.getPoints(20);
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    
+                    const material = conn.id === state.selectedConnectionId ? selectedLineMaterial : lineMaterial;
+                    const line = new THREE.Line(geometry, material);
+                    line.computeLineDistances();
+                    connectionMeshes.add(line);
+                });
+            };
+
+            const switchView = (view) => {
+                state.view = view;
+                const view2DBtn = document.getElementById('view-2d-btn');
+                const view3DBtn = document.getElementById('view-3d-btn');
+
+                if (view === '2d') {
+                    canvas2DContainer.style.zIndex = 1;
+                    canvas3DContainer.style.zIndex = 0;
+                    if(controls) controls.enabled = false;
+                    view2DBtn.classList.add('bg-blue-600', 'text-white');
+                    view2DBtn.classList.remove('text-gray-300');
+                    view3DBtn.classList.remove('bg-blue-600', 'text-white');
+                    view3DBtn.classList.add('text-gray-300');
+                    draw(ctx2D);
+                } else { // 3D
+                    canvas2DContainer.style.zIndex = 0;
+                    canvas3DContainer.style.zIndex = 1;
+                    if(controls) controls.enabled = true;
+                    view3DBtn.classList.add('bg-blue-600', 'text-white');
+                    view3DBtn.classList.remove('text-gray-300');
+                    view2DBtn.classList.remove('bg-blue-600', 'text-white');
+                    view2DBtn.classList.add('text-gray-300');
+                    update3DScene();
+                }
+            };
+            document.getElementById('view-2d-btn').addEventListener('click', () => switchView('2d'));
+            document.getElementById('view-3d-btn').addEventListener('click', () => switchView('3d'));
+
+            const goToStage = (stageNum) => {
+                state.currentStage = stageNum;
+                stage1.classList.toggle('hidden', stageNum !== 1);
+                stage2.classList.toggle('hidden', stageNum !== 2);
+                stage3.classList.toggle('hidden', stageNum !== 3);
+                if (stageNum === 2) { 
+                    resizeCanvas(); 
+                    initBuilder(); 
+                    if (!scene) {
+                        init3D();
+                    } else {
+                        update3DScene(); // CORRECTIF: Repeupler la scène
+                    }
+                    // Vue 2D par défaut sauf indication contraire
+                    if (state.view !== '3d') {
+                        switchView('2d');
+                    } else {
+                        switchView('3d');
+                    }
+                }
+            };
+            
+            document.getElementById('start-building-btn').addEventListener('click', () => {
+                state.facility.width = parseFloat(document.getElementById('space-width').value) || 20;
+                state.facility.length = parseFloat(document.getElementById('space-length').value) || 40;
+                state.facility.height = parseFloat(document.getElementById('space-height').value) || 6;
+                goToStage(2);
+            });
+            
+            document.getElementById('space-height').addEventListener('input', (e) => {
+                const height = parseFloat(e.target.value);
+                document.getElementById('height-warning').classList.toggle('hidden', height >= 4 || isNaN(height));
+            });
+            
+            document.getElementById('analyze-line-btn').addEventListener('click', () => { 
+                generateProposal(); 
+                goToStage(3); 
+            });
+            document.getElementById('back-to-builder-btn').addEventListener('click', () => goToStage(2));
+            document.getElementById('contact-team-btn').addEventListener('click', () => sendEmailProposal());
+
+            const initBuilder = () => {
+                populateLibrary();
+                draw(ctx2D);
+            };
+
+            const populateLibrary = () => {
+                const libraryContainer = document.getElementById('machine-library');
+                libraryContainer.innerHTML = '';
+                Object.keys(database).forEach(categoryKey => {
+                    const category = database[categoryKey];
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'border border-gray-700 rounded-lg';
+                    const header = document.createElement('button');
+                    header.className = 'w-full text-left p-3 font-semibold text-white flex justify-between items-center';
+                    header.innerHTML = `<span>${category.name}</span> <span class="transform transition-transform text-gray-400">▼</span>`;
+                    const itemGroup = document.createElement('div');
+                    itemGroup.className = 'sidebar-item-group bg-gray-900/50 p-2 space-y-1';
+                    
+                    Object.keys(category.items).forEach(itemKey => {
+                        const item = category.items[itemKey];
+                        const itemEl = document.createElement('div');
+                         itemEl.className = 'p-2 rounded-md hover:bg-gray-600 flex items-center gap-2';
+
+                        if(item.isAction) {
+                            itemEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="text-sm font-semibold text-blue-400">${item.name}</span>`;
+                            itemEl.classList.add('cursor-pointer');
+                            itemEl.addEventListener('click', () => {
+                                if (item.id === 'CUSTOM-MACHINE') {
+                                    showCustomMachineModal();
+                                }
+                            });
+                        } else {
+                            itemEl.classList.add('cursor-grab');
+                            itemEl.draggable = true;
+                            itemEl.dataset.id = item.id;
+                            itemEl.dataset.category = categoryKey;
+                            let icons = item.waste_output ? `<span class="machine-icon bg-red-600 text-white" title="Sortie Déchets">D</span>` : '';
+                            itemEl.innerHTML = `<div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${category.color};"></div><span class="text-sm flex-1">${item.name}</span>${icons}`;
+                            itemEl.addEventListener('dragstart', (e) => {
+                                e.dataTransfer.setData('text/plain', JSON.stringify({id: item.id, category: categoryKey}));
+                            });
+                        }
+                        itemGroup.appendChild(itemEl);
+                    });
+                    
+                    categoryDiv.appendChild(header);
+                    categoryDiv.appendChild(itemGroup);
+                    libraryContainer.appendChild(categoryDiv);
+                    header.addEventListener('click', () => {
+                        itemGroup.classList.toggle('open');
+                        header.querySelector('span.transform').classList.toggle('rotate-180');
+                    });
+                });
+            };
+
+            const resizeCanvas = () => {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                canvas2D.width = width;
+                canvas2D.height = height;
+                
+                if (renderer) {
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                }
+
+                draw(ctx2D);
+            };
+
+            const drawRuler = (context) => {
+                if (!state.rulerState.active || !state.rulerState.startPoint2D) return;
+
+                const start = {
+                    x: state.rulerState.startPoint2D.x * state.scale,
+                    y: state.rulerState.startPoint2D.y * state.scale
+                };
+                const end = {
+                    x: state.rulerState.endPoint2D.x * state.scale,
+                    y: state.rulerState.endPoint2D.y * state.scale
+                };
+
+                context.beginPath();
+                context.moveTo(start.x, start.y);
+                context.lineTo(end.x, end.y);
+                context.strokeStyle = '#facc15'; // yellow-400
+                context.lineWidth = 2;
+                context.setLineDash([5, 5]);
+                context.stroke();
+                context.setLineDash([]);
+
+                // Dessiner des cercles aux extrémités
+                context.fillStyle = '#facc15';
+                context.beginPath();
+                context.arc(start.x, start.y, 4, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.arc(end.x, end.y, 4, 0, Math.PI * 2);
+                context.fill();
+
+                const distance = Math.sqrt(
+                    Math.pow(state.rulerState.endPoint2D.x - state.rulerState.startPoint2D.x, 2) +
+                    Math.pow(state.rulerState.endPoint2D.y - state.rulerState.startPoint2D.y, 2)
+                );
+
+                if (distance < 0.01) return;
+
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+
+                const text = `${distance.toFixed(2)} m`;
+                context.font = 'bold 14px Inter';
+                const textWidth = context.measureText(text).width;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                context.fillRect(midX - textWidth/2 - 4, midY - 10, textWidth + 8, 20);
+                
+                context.fillStyle = '#facc15';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, midX, midY);
+            };
+
+            const draw = (context, isExport = false) => {
+                if(state.view !== '2d' && !isExport) return;
+                context.clearRect(0, 0, canvas2D.width, canvas2D.height);
+                
+                context.save();
+                context.translate(state.pan.x, state.pan.y);
+
+                const facilityPixelWidth = state.facility.width * state.scale;
+                const facilityPixelLength = state.facility.length * state.scale;
+                
+                context.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+                context.lineWidth = 0.5;
+                for (let x = 0; x <= facilityPixelLength; x += state.scale) { 
+                    context.beginPath(); 
+                    context.moveTo(x, 0); 
+                    context.lineTo(x, facilityPixelWidth); 
+                    context.stroke(); 
+                }
+                for (let y = 0; y <= facilityPixelWidth; y += state.scale) { 
+                    context.beginPath(); 
+                    context.moveTo(0, y); 
+                    context.lineTo(facilityPixelLength, y); 
+                    context.stroke(); 
+                }
+                context.strokeStyle = '#f97316';
+                context.lineWidth = 2;
+                context.strokeRect(0, 0, facilityPixelLength, facilityPixelWidth);
+                
+                const { issues } = analyzeLine(false);
+                const bottleneckId = issues.find(i => i.type === 'bottleneck')?.machineId;
+                
+                drawConnections(context);
+
+                state.items.forEach(item => {
+                    const isSelected = !isExport && state.selectedItemId === item.instanceId;
+                    const isBottleneck = !isExport && item.type === 'machine' && item.instanceId === bottleneckId;
+                    drawItem(context, item, isSelected, isBottleneck);
+                     if (state.linkingState.active && !isExport && item.type === 'machine') {
+                        drawConnectionNodes(context, item);
+                    }
+                });
+
+                if (state.linkingState.active && state.linkingState.startMachineId && !isExport) {
+                    drawPreviewLink(context);
+                }
+
+                drawRuler(context);
+                
+                context.restore();
+
+                context.fillStyle = 'white';
+                context.font = '12px Inter';
+                context.textAlign = 'center';
+                const titleX = state.pan.x + facilityPixelLength / 2;
+                const titleY = state.pan.y - 15;
+                context.fillText(`${state.facility.length}m x ${state.facility.width}m`, titleX, titleY);
+            };
+
+             const drawItem = (context, inst, isSelected, isBottleneck) => {
+                const footprint = getItemFootprint(inst);
+                const itemWorldW = footprint.w;
+                const itemWorldL = footprint.l;
+            
+                const w_px = itemWorldW * state.scale;
+                const h_px = itemWorldL * state.scale;
+            
+                const cx_px = (inst.x + itemWorldL / 2) * state.scale;
+                const cy_px = (inst.y + itemWorldW / 2) * state.scale;
+            
+                context.save();
+                context.translate(cx_px, cy_px);
+                context.rotate(inst.rotation * Math.PI / 180);
+            
+                if (inst.type === 'platform') {
+                    context.fillStyle = 'rgba(71, 85, 105, 0.4)'; // slate-700 avec 40% opacité
+                    context.fillRect(-h_px / 2, -w_px / 2, h_px, w_px);
+                    context.strokeStyle = isSelected ? '#60a5fa' : 'rgba(156, 163, 175, 0.8)'; // gray-400
+                    context.lineWidth = isSelected ? 3 : 2;
+                    context.setLineDash([10, 5]);
+                    context.strokeRect(-h_px / 2, -w_px / 2, h_px, w_px);
+                    context.setLineDash([]);
+                } else {
+                    context.globalAlpha = 0.8;
+                    const color = inst.type === 'pillar' ? '#6b7280' 
+                        : (inst.type === 'door' ? '#4b5563' 
+                        : (inst.category === 'custom' ? '#9ca3af'
+                        : (database[inst.category]?.color || '#ffffff')));
+                    context.fillStyle = color;
+                    context.fillRect(-h_px / 2, -w_px / 2, h_px, w_px);
+                    context.globalAlpha = 1;
+                
+                    context.strokeStyle = isBottleneck ? '#ef4444' : (isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.8)');
+                    context.lineWidth = isBottleneck || isSelected ? 3 : 2;
+                    context.strokeRect(-h_px / 2, -w_px / 2, h_px, w_px);
+                
+                    if (inst.type === 'machine') {
+                        context.fillStyle = 'white';
+                        context.font = `${Math.max(8, Math.min(16, state.scale / 1.5))}px Inter`;
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+                        
+                        let label = inst.id;
+                        if (inst.id.startsWith('CUSTOM-')) {
+                            label = inst.name.substring(0, 10) + (inst.name.length > 10 ? '...' : '');
+                        } else if (inst.id === 'CONV-CUSTOM') {
+                            label = `Conv. ${inst.footprint.l}m`;
+                        }
+                        context.fillText(label, 0, 0);
+                    } else if (inst.type === 'door') {
+                        context.strokeStyle = '#9ca3af';
+                        context.lineWidth = 1;
+                        context.setLineDash([3, 3]);
+                        context.beginPath();
+                        context.moveTo(-h_px/2, -w_px/2);
+                        context.arc(-h_px/2, -w_px/2, h_px, 0, Math.PI / 2);
+                        context.stroke();
+                        context.setLineDash([]);
+                    }
+                }
+                
+                context.restore();
+            };
+
+            const getMachineNodes = (inst) => {
+                const footprint = getItemFootprint(inst);
+                if (!footprint) return null;
+                const { w: itemWorldW, l: itemWorldL } = footprint;
+
+                const centerX = inst.x + itemWorldL / 2;
+                const centerY = inst.y + itemWorldW / 2;
+
+                const angle = inst.rotation * Math.PI / 180;
+                const cosAngle = Math.cos(angle);
+                const sinAngle = Math.sin(angle);
+
+                const halfL = itemWorldL / 2;
+
+                // Positions relatives depuis le centre
+                const inRelX = -halfL;
+                const outRelX = halfL;
+                
+                // Positions relatives pivotées
+                const inRotX = inRelX * cosAngle;
+                const inRotY = inRelX * sinAngle;
+                const outRotX = outRelX * cosAngle;
+                const outRotY = outRelX * sinAngle;
+
+                return {
+                    'in': { 
+                        x2d: (centerX + inRotX) * state.scale, 
+                        y2d: (centerY + inRotY) * state.scale,
+                        x3d: centerX + inRotX,
+                        z3d: centerY + inRotY
+                    },
+                    'out': { 
+                        x2d: (centerX + outRotX) * state.scale, 
+                        y2d: (centerY + outRotY) * state.scale,
+                        x3d: centerX + outRotX,
+                        z3d: centerY + outRotY
+                    },
+                };
+            };
+            
+            const drawConnectionNodes = (context, inst) => {
+                const nodes = getMachineNodes(inst);
+                const nodeRadius = Math.max(3, Math.min(6, state.scale / 4));
+                
+                // Nœud IN (bleu)
+                context.beginPath();
+                context.arc(nodes.in.x2d, nodes.in.y2d, nodeRadius, 0, 2 * Math.PI);
+                context.fillStyle = 'rgba(59, 130, 246, 0.7)';
+                context.fill();
+                context.strokeStyle = '#FFFFFF';
+                context.lineWidth = 1;
+                context.stroke();
+
+                // Nœud OUT (orange)
+                 context.beginPath();
+                context.arc(nodes.out.x2d, nodes.out.y2d, nodeRadius, 0, 2 * Math.PI);
+                context.fillStyle = 'rgba(249, 115, 22, 0.7)';
+                context.fill();
+                context.strokeStyle = '#FFFFFF';
+                context.lineWidth = 1;
+                context.stroke();
+            };
+
+            const drawConnections = (context) => {
+                state.connections.forEach(conn => {
+                    const fromMachine = state.items.find(m => m.instanceId === conn.from);
+                    const toMachine = state.items.find(m => m.instanceId === conn.to);
+                    if (!fromMachine || !toMachine) return;
+
+                    const fromNodes = getMachineNodes(fromMachine);
+                    const toNodes = getMachineNodes(toMachine);
+                    const startPos = fromNodes.out;
+                    const endPos = toNodes.in;
+
+                    context.beginPath();
+                    context.moveTo(startPos.x2d, startPos.y2d);
+                    const cp1x = startPos.x2d + (endPos.x2d - startPos.x2d) * 0.5;
+                    const cp1y = startPos.y2d;
+                    const cp2x = endPos.x2d - (endPos.x2d - startPos.x2d) * 0.5;
+                    const cp2y = endPos.y2d;
+                    context.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endPos.x2d, endPos.y2d);
+
+                    const isSelected = state.selectedConnectionId === conn.id;
+                    context.strokeStyle = isSelected ? '#60a5fa' : '#9ca3af';
+                    context.lineWidth = isSelected ? 4 : 2;
+                    if(!isSelected) context.setLineDash([5,5]);
+                    context.stroke();
+                    context.setLineDash([]);
+                });
+            };
+
+            const drawPreviewLink = (context) => {
+                const startPos = state.linkingState.startNodePosition2D;
+                if (!startPos) return;
+
+                const worldPixelPos = getWorldPixelPos(lastMousePos);
+                
+                context.beginPath();
+                context.moveTo(startPos.x, startPos.y);
+                context.lineTo(worldPixelPos.x, worldPixelPos.y);
+                context.strokeStyle = '#f97316';
+                context.lineWidth = 3;
+                context.setLineDash([8, 4]);
+                context.stroke();
+                context.setLineDash([]);
+            };
+
+            let lastMousePos = {x: 0, y: 0};
+
+            const getCanvasWorldPos = (e) => {
+                const rect = canvas2D.getBoundingClientRect();
+                const pixelX = e.clientX - rect.left;
+                const pixelY = e.clientY - rect.top;
+                return {
+                    x: (pixelX - state.pan.x) / state.scale,
+                    y: (pixelY - state.pan.y) / state.scale
+                };
+            };
+
+            const getWorldPixelPos = (e) => {
+                const rect = canvas2D.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left - state.pan.x,
+                    y: e.clientY - rect.top - state.pan.y
+                };
+            };
+            
+            const getItemAt = (worldPos) => {
+                for (const inst of [...state.items].reverse()) {
+                    const footprint = getItemFootprint(inst);
+                    if (!footprint) continue;
+
+                    const itemWorldW = footprint.w;
+                    const itemWorldL = footprint.l;
+
+                    const centerX = inst.x + itemWorldL / 2;
+                    const centerY = inst.y + itemWorldW / 2;
+
+                    const dx = worldPos.x - centerX;
+                    const dy = worldPos.y - centerY;
+
+                    const angle = -inst.rotation * Math.PI / 180;
+                    const cosAngle = Math.cos(angle);
+                    const sinAngle = Math.sin(angle);
+
+                    const rotatedX = dx * cosAngle - dy * sinAngle;
+                    const rotatedY = dx * sinAngle + dy * cosAngle;
+
+                    if (Math.abs(rotatedX) <= itemWorldL / 2 && Math.abs(rotatedY) <= itemWorldW / 2) {
+                        return inst;
+                    }
+                }
+                return null;
+            };
+
+            function distToSegment(p, v, w) {
+                const l2 = (v.x - w.x)**2 + (v.y - w.y)**2;
+                if (l2 == 0) return Math.sqrt((p.x - v.x)**2 + (p.y - v.y)**2);
+                let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                const closestPoint = { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+                return Math.sqrt((p.x - closestPoint.x)**2 + (p.y - closestPoint.y)**2);
+            }
+
+            const getConnectionAt = (worldPos) => {
+                const clickThreshold = 5 / state.scale; // Tolérance de 5 pixels dans l'espace mondial
+                let closestConn = null;
+                let minDist = Infinity;
+
+                for (const conn of state.connections) {
+                    const fromMachine = state.items.find(m => m.instanceId === conn.from);
+                    const toMachine = state.items.find(m => m.instanceId === conn.to);
+                    if (!fromMachine || !toMachine) continue;
+
+                    const fromNodes = getMachineNodes(fromMachine);
+                    const toNodes = getMachineNodes(toMachine);
+                    
+                    const startPos = { x: fromNodes.out.x2d / state.scale, y: fromNodes.out.y2d / state.scale };
+                    const endPos = { x: toNodes.in.x2d / state.scale, y: toNodes.in.y2d / state.scale };
+
+                    const cp1 = { x: startPos.x + (endPos.x - startPos.x) * 0.5, y: startPos.y };
+                    const cp2 = { x: endPos.x - (endPos.x - startPos.x) * 0.5, y: endPos.y };
+
+                    const steps = 20;
+                    let lastPoint = startPos;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const t_inv = 1 - t;
+                        const t_inv2 = t_inv * t_inv;
+                        const t_inv3 = t_inv2 * t_inv;
+                        const t2 = t * t;
+                        const t3 = t2 * t;
+
+                        const currentPoint = {
+                            x: t_inv3 * startPos.x + 3 * t_inv2 * t * cp1.x + 3 * t_inv * t2 * cp2.x + t3 * endPos.x,
+                            y: t_inv3 * startPos.y + 3 * t_inv2 * t * cp1.y + 3 * t_inv * t2 * cp2.y + t3 * endPos.y
+                        };
+                        
+                        const dist = distToSegment(worldPos, lastPoint, currentPoint);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closestConn = conn;
+                        }
+                        lastPoint = currentPoint;
+                    }
+                }
+
+                if (minDist < clickThreshold) {
+                    return closestConn;
+                }
+                return null;
+            }
+
+            const getClickedNode2D = (worldPixelPos) => {
+                const nodeRadius = 7;
+                for (const machine of state.items) {
+                    if (machine.type !== 'machine') continue;
+                    const nodes = getMachineNodes(machine);
+                    for (const [key, nodePos] of Object.entries(nodes)) {
+                        const dist = Math.sqrt(Math.pow(worldPixelPos.x - nodePos.x2d, 2) + Math.pow(worldPixelPos.y - nodePos.y2d, 2));
+                        if (dist < nodeRadius) {
+                            return { machine, nodeType: key, nodePos2D: {x: nodePos.x2d, y: nodePos.y2d}, nodePos3D: new THREE.Vector3(nodePos.x3d, (getItemFootprint(machine).h || 1.5), nodePos.z3d) };
+                        }
+                    }
+                }
+                return null;
+            };
+
+            // --- Écouteurs d'Événements 2D ---
+            canvas2DContainer.addEventListener('mousedown', (e) => {
+                if(state.view !== '2d') return;
+
+                 if (state.rulerState.active) {
+                    const worldPos = getCanvasWorldPos(e);
+                    if (!state.rulerState.startPoint2D) {
+                        state.rulerState.startPoint2D = worldPos;
+                        state.rulerState.endPoint2D = worldPos;
+                    } else {
+                        // Finaliser au deuxième clic et réinitialiser pour une nouvelle mesure
+                        state.rulerState.startPoint2D = null;
+                        state.rulerState.endPoint2D = null;
+                    }
+                    draw(ctx2D);
+                    return;
+                }
+
+                const worldPos = getCanvasWorldPos(e);
+                const worldPixelPos = getWorldPixelPos(e);
+
+                if (state.linkingState.active) {
+                    const clickedNodeInfo = getClickedNode2D(worldPixelPos);
+                    if (clickedNodeInfo) {
+                        if (!state.linkingState.startMachineId) {
+                            if (clickedNodeInfo.nodeType === 'out') {
+                                state.linkingState.startMachineId = clickedNodeInfo.machine.instanceId;
+                                state.linkingState.startNodePosition2D = clickedNodeInfo.nodePos2D;
+                            }
+                        } else {
+                            if (clickedNodeInfo.nodeType === 'in' && state.linkingState.startMachineId !== clickedNodeInfo.machine.instanceId) {
+                                state.connections.push({
+                                    id: Date.now(),
+                                    from: state.linkingState.startMachineId,
+                                    to: clickedNodeInfo.machine.instanceId
+                                });
+                            }
+                             state.linkingState.startMachineId = null;
+                             state.linkingState.startNodePosition2D = null;
+                        }
+                    }
+                    draw(ctx2D);
+                    update3DScene();
+                    return;
+                }
+
+                state.selectedItemId = null;
+                state.selectedConnectionId = null;
+
+                const clickedItem = getItemAt(worldPos);
+                if (clickedItem) {
+                    state.selectedItemId = clickedItem.instanceId;
+                    state.draggingItem = clickedItem;
+                    state.dragOffset.x = worldPos.x - clickedItem.x;
+                    state.dragOffset.y = worldPos.y - clickedItem.y;
+                } else {
+                    const clickedConnection = getConnectionAt(worldPos);
+                    if (clickedConnection) {
+                        state.selectedConnectionId = clickedConnection.id;
+                    } else {
+                        state.isPanning = true;
+                        state.startPan.x = e.clientX - state.pan.x;
+                        state.startPan.y = e.clientY - state.pan.y;
+                    }
+                }
+                draw(ctx2D);
+                update3DScene();
+            });
+
+            const handle2DMouseMove = (e) => {
+                if(state.view !== '2d') return;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+
+                if (state.rulerState.active && state.rulerState.startPoint2D) {
+                    state.rulerState.endPoint2D = getCanvasWorldPos(e);
+                    draw(ctx2D);
+                    return; // Ne rien faire d'autre pendant la mesure
+                }
+                
+                if (state.draggingItem) {
+                    const worldPos = getCanvasWorldPos(e);
+                    state.draggingItem.x = worldPos.x - state.dragOffset.x;
+                    state.draggingItem.y = worldPos.y - state.dragOffset.y;
+                    draw(ctx2D);
+                } else if (state.isPanning) {
+                    state.pan.x = e.clientX - state.startPan.x;
+                    state.pan.y = e.clientY - state.startPan.y;
+                    draw(ctx2D);
+                } else if (state.linkingState.active) {
+                    draw(ctx2D);
+                }
+                updateTooltip(e);
+                updateCoords(e);
+            };
+
+            canvas2DContainer.addEventListener('mousemove', throttle(handle2DMouseMove, 16));
+
+
+            canvas2DContainer.addEventListener('mouseup', () => {
+                if(state.view !== '2d') return;
+                if (state.draggingItem) {
+                    state.draggingItem.x = Math.round(state.draggingItem.x / 0.1) * 0.1;
+                    state.draggingItem.y = Math.round(state.draggingItem.y / 0.1) * 0.1;
+                    
+                    const footprint = getItemFootprint(state.draggingItem);
+                    const itemW = (state.draggingItem.rotation % 180 === 0 ? footprint.w : footprint.l);
+                    const itemL = (state.draggingItem.rotation % 180 === 0 ? footprint.l : footprint.w);
+
+                    state.draggingItem.x = Math.max(0, Math.min(state.draggingItem.x, state.facility.length - itemL));
+                    state.draggingItem.y = Math.max(0, Math.min(state.draggingItem.y, state.facility.width - itemW));
+                    
+                    updateItemElevation(state.draggingItem);
+                }
+                
+                state.isPanning = false;
+                state.draggingItem = null;
+                updateHUD();
+                draw(ctx2D);
+                update3DScene();
+            });
+
+            canvas2DContainer.addEventListener('dblclick', (e) => {
+                if(state.view !== '2d') return;
+                if (state.rulerState.active) return; // Pas d'action au double-clic en mode règle
+                const worldPos = getCanvasWorldPos(e);
+                const itemToRemove = getItemAt(worldPos);
+                if (itemToRemove) {
+                    state.items = state.items.filter(i => i.instanceId !== itemToRemove.instanceId);
+                     state.connections = state.connections.filter(c => c.from !== itemToRemove.instanceId && c.to !== itemToRemove.instanceId);
+                    updateHUD();
+                    draw(ctx2D);
+                    update3DScene();
+                }
+            });
+
+            canvas2DContainer.addEventListener('wheel', (e) => {
+                if(state.view !== '2d') return;
+                e.preventDefault();
+                const rect = canvas2D.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const worldXBefore = (mouseX - state.pan.x) / state.scale;
+                const worldYBefore = (mouseY - state.pan.y) / state.scale;
+
+                const zoomIntensity = 0.1;
+                const wheel = e.deltaY < 0 ? 1 : -1;
+                const zoom = Math.exp(wheel * zoomIntensity);
+                const newScale = Math.max(5, Math.min(100, state.scale * zoom));
+
+                const newPanX = mouseX - worldXBefore * newScale;
+                const newPanY = mouseY - worldYBefore * newScale;
+
+                state.scale = newScale;
+                state.pan.x = newPanX;
+                state.pan.y = newPanY;
+                
+                draw(ctx2D);
+            });
+
+            canvas2DContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
+            canvas2DContainer.addEventListener('drop', (e) => {
+                if(state.view !== '2d') return;
+                e.preventDefault();
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                
+                const worldPos = getCanvasWorldPos(e);
+                tempDropData = { data, worldPos };
+
+                if (data.id === 'CONV-CUSTOM') {
+                    showConveyorModal();
+                    return;
+                }
+                
+                if (data.id === 'PLATFORM-CUSTOM') {
+                    showPlatformModal();
+                    return;
+                }
+
+                const itemData = database[data.category].items[data.id];
+                const itemType = (data.category === 'utility' || data.category === 'agriculture') ? 'utility' : 'machine';
+
+                const itemWidth = itemData.footprint.w;
+                const itemLength = itemData.footprint.l;
+
+                const dropX = worldPos.x - (itemLength / 2);
+                const dropY = worldPos.y - (itemWidth / 2);
+
+                const clampedX = Math.max(0, Math.min(dropX, state.facility.length - itemLength));
+                const clampedY = Math.max(0, Math.min(dropY, state.facility.width - itemWidth));
+
+                const newItem = {
+                    type: itemType, 
+                    id: itemData.id, 
+                    name: itemData.name,
+                    category: data.category,
+                    x: clampedX, y: clampedY,
+                    rotation: 0, 
+                    instanceId: Date.now(),
+                    footprint: { ...itemData.footprint },
+                    elevation: 0,
+                    parentPlatform: null,
+                };
+                
+                state.items.push(newItem);
+                updateItemElevation(newItem);
+                
+                updateHUD();
+                draw(ctx2D);
+                update3DScene();
+            });
+
+            // --- Écouteurs d'Événements 3D ---
+            function add3DEventListeners() {
+                canvas3DContainer.addEventListener('mousedown', on3DMouseDown);
+                canvas3DContainer.addEventListener('mousemove', throttle(on3DMouseMove, 16));
+                canvas3DContainer.addEventListener('mouseup', on3DMouseUp);
+                canvas3DContainer.addEventListener('dblclick', on3DDoubleClick);
+            }
+
+            function get3DIntersects(e) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                return raycaster.intersectObjects(scene.children, true);
+            }
+            
+            function on3DMouseDown(e) {
+                if (state.view !== '3d') return;
+                const intersects = get3DIntersects(e);
+
+                if (state.rulerState.active) {
+                    const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
+                    if (groundIntersect) {
+                         if (!state.rulerState.startPoint3D) {
+                            state.rulerState.startPoint3D = groundIntersect.point.clone();
+                            state.rulerState.endPoint3D = groundIntersect.point.clone();
+                        } else {
+                            // Finaliser et réinitialiser
+                            state.rulerState.startPoint3D = null;
+                            state.rulerState.endPoint3D = null;
+                        }
+                    }
+                    update3DScene();
+                    return;
+                }
+                
+                if (state.linkingState.active) {
+                    const nodeIntersect = intersects.find(i => i.object.userData.machineId);
+                    if (nodeIntersect) {
+                        const { machineId, type } = nodeIntersect.object.userData;
+                        if (!state.linkingState.startMachineId) {
+                            if (type === 'out') {
+                                state.linkingState.startMachineId = machineId;
+                                state.linkingState.startNodePosition3D = nodeIntersect.object.position.clone();
+                            }
+                        } else {
+                            if (type === 'in' && state.linkingState.startMachineId !== machineId) {
+                                state.connections.push({ id: Date.now(), from: state.linkingState.startMachineId, to: machineId });
+                            }
+                            state.linkingState.startMachineId = null;
+                            state.linkingState.startNodePosition3D = null;
+                        }
+                    }
+                    update3DScene();
+                    draw(ctx2D);
+                    return;
+                }
+
+                if (intersects.length > 0) {
+                    const intersectedObj = intersects.find(i => i.object.userData.instanceId);
+                    if (intersectedObj) {
+                        controls.enabled = false;
+                        state.selectedItemId = intersectedObj.object.userData.instanceId;
+                        drag3DItem = state.items.find(i => i.instanceId === state.selectedItemId);
+                        
+                        // Sauvegarder l'état original et masquer l'objet pour un raycasting propre
+                        drag3DItem.originalState = {
+                            x: drag3DItem.x,
+                            y: drag3DItem.y,
+                            elevation: drag3DItem.elevation || 0
+                        };
+                        const threeMesh = threeObjects.get(drag3DItem.instanceId);
+                        if(threeMesh) threeMesh.visible = false;
+                        
+                        const intersectionPoint = intersectedObj.point;
+                        state.dragOffset.x = intersectionPoint.x - drag3DItem.x;
+                        state.dragOffset.z = intersectionPoint.z - drag3DItem.y;
+
+                    } else {
+                        state.selectedItemId = null;
+                    }
+                }
+                state.selectedConnectionId = null; // Désélectionner toute connexion
+                update3DScene(); 
+                draw(ctx2D);
+            }
+
+            function on3DMouseMove(e) {
+                if (state.view !== '3d') return;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+
+                const intersects = get3DIntersects(e);
+
+                if (state.rulerState.active && state.rulerState.startPoint3D) {
+                     const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
+                     if (groundIntersect) {
+                         state.rulerState.endPoint3D = groundIntersect.point.clone();
+                         update3DScene();
+                     }
+                     return; // Ne rien faire d'autre pendant la mesure
+                }
+                
+                if (state.linkingState.active && state.linkingState.startMachineId) {
+                    const groundIntersect = intersects.find(i => i.object.userData.isGround || i.object.userData.isPlatform);
+                    if (groundIntersect) {
+                        // Cette logique était pour une ligne de prévisualisation qui n'est pas utilisée, peut être supprimée ou conservée pour une utilisation future
+                    }
+                }
+
+                if (!drag3DItem) return;
+
+                const platformIntersect = intersects.find(i => i.object.userData.isPlatform);
+                const groundIntersect = intersects.find(i => i.object.userData.isGround);
+
+                if (platformIntersect) {
+                    const point = platformIntersect.point;
+                    drag3DItem.elevation = platformIntersect.object.userData.surfaceY;
+                    drag3DItem.x = point.x - state.dragOffset.x;
+                    drag3DItem.y = point.z - state.dragOffset.z;
+                } else if (groundIntersect) {
+                    const point = groundIntersect.point;
+                    drag3DItem.elevation = 0;
+                    drag3DItem.x = point.x - state.dragOffset.x;
+                    drag3DItem.y = point.z - state.dragOffset.z;
+                }
+                
+                update3DScene();
+                draw(ctx2D);
+            }
+
+            function on3DMouseUp(e) {
+                if (state.view !== '3d') return;
+                controls.enabled = true;
+                if(drag3DItem) {
+                    const threeMesh = threeObjects.get(drag3DItem.instanceId);
+
+                    drag3DItem.x = Math.round(drag3DItem.x / 0.1) * 0.1;
+                    drag3DItem.y = Math.round(drag3DItem.y / 0.1) * 0.1;
+
+                    const footprint = getItemFootprint(drag3DItem);
+                    const rotatedL = Math.abs(footprint.l * Math.cos(drag3DItem.rotation * Math.PI / 180)) + Math.abs(footprint.w * Math.sin(drag3DItem.rotation * Math.PI / 180));
+                    const rotatedW = Math.abs(footprint.l * Math.sin(drag3DItem.rotation * Math.PI / 180)) + Math.abs(footprint.w * Math.cos(drag3DItem.rotation * Math.PI / 180));
+                    
+                    drag3DItem.x = Math.max(0, Math.min(drag3DItem.x, state.facility.length - rotatedL));
+                    drag3DItem.y = Math.max(0, Math.min(drag3DItem.y, state.facility.width - rotatedW));
+                    
+                    // --- VALIDATION HAUTEUR PLAFOND ---
+                    const machineHeight = Math.max(footprint.h || 0, footprint.h_a || 0, footprint.h_b || 0) || 1.5;
+                    const finalElevation = drag3DItem.elevation || 0;
+                    const totalHeight = finalElevation + machineHeight;
+
+                    if (totalHeight > state.facility.height) {
+                        showMessage('Erreur de Placement', `La machine "${drag3DItem.name}" (hauteur: ${machineHeight.toFixed(1)}m) ne peut pas être placée sur une surface à ${finalElevation.toFixed(1)}m.\n\nLa hauteur totale (${totalHeight.toFixed(1)}m) dépasserait le plafond de l'installation de ${state.facility.height}m.`);
+                        
+                        // Revenir à l'état original avant le glissement
+                        drag3DItem.x = drag3DItem.originalState.x;
+                        drag3DItem.y = drag3DItem.originalState.y;
+                        drag3DItem.elevation = drag3DItem.originalState.elevation;
+                    }
+                    
+                    // Rendre l'objet à nouveau visible
+                    if (threeMesh) threeMesh.visible = true;
+                    
+                    drag3DItem = null;
+                    updateHUD();
+                    update3DScene();
+                    draw(ctx2D);
+                }
+            }
+
+            function on3DDoubleClick(e) {
+                if (state.view !== '3d') return;
+                if (state.rulerState.active) return; // Pas de double-clic en mode règle
+                const intersects = get3DIntersects(e);
+                 if (intersects.length > 0) {
+                    const intersectedObj = intersects.find(i => i.object.userData.instanceId);
+                     if (intersectedObj) {
+                        const idToRemove = intersectedObj.object.userData.instanceId;
+                        state.items = state.items.filter(i => i.instanceId !== idToRemove);
+                         state.connections = state.connections.filter(c => c.from !== idToRemove && c.to !== idToRemove);
+                        updateHUD();
+                        update3DScene();
+                        draw(ctx2D);
+                     }
+                 }
+            }
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === 'r' && state.selectedItemId) {
+                    const item = state.items.find(m => m.instanceId === state.selectedItemId);
+                    if (item) {
+                        item.rotation = (item.rotation + 90) % 360;
+                        draw(ctx2D);
+                        update3DScene();
+                    }
+                }
+                if (e.key === 'Delete' && (state.selectedItemId || state.selectedConnectionId)) {
+                     if (state.selectedItemId) {
+                        const id = state.selectedItemId;
+                        state.items = state.items.filter(i => i.instanceId !== id);
+                        state.connections = state.connections.filter(c => c.from !== id && c.to !== id);
+                        state.selectedItemId = null;
+                    }
+                    if (state.selectedConnectionId) {
+                        state.connections = state.connections.filter(c => c.id !== state.selectedConnectionId);
+                        state.selectedConnectionId = null;
+                    }
+                    updateHUD();
+                    draw(ctx2D);
+                    update3DScene();
+                }
+                 if (e.key === 'Escape') {
+                    if (state.linkingState.active) {
+                        toggleLinkMode(false);
+                    }
+                    if (state.rulerState.active) {
+                        toggleRulerMode(false);
+                    }
+                }
+            });
+            
+            const getItemFootprint = (inst) => {
+                if (!inst) return { w: 1, l: 1, h: 1};
+                if(inst.footprint) return inst.footprint;
+                if (inst.type === 'machine' || inst.type === 'utility') {
+                    if (inst.category && database[inst.category] && database[inst.category].items[inst.id]) {
+                       return database[inst.category].items[inst.id].footprint;
+                    }
+                    return { w: 1, l: 1, h: 1};
+                }
+            };
+
+            const updateItemElevation = (itemToUpdate) => {
+                if (itemToUpdate.type !== 'machine') {
+                    itemToUpdate.elevation = 0; // S'assurer que les non-machines sont au sol
+                    return;
+                }
+
+                const platforms = state.items.filter(i => i.type === 'platform');
+                let highestPlatformHeight = 0;
+                let isOnPlatform = false;
+
+                const itemFootprint = getItemFootprint(itemToUpdate);
+                const itemCenterX = itemToUpdate.x + itemFootprint.l / 2;
+                const itemCenterY = itemToUpdate.y + itemFootprint.w / 2;
+
+                platforms.forEach(platform => {
+                    const platformFootprint = getItemFootprint(platform);
+                    const isInsideX = itemCenterX >= platform.x && itemCenterX <= (platform.x + platformFootprint.l);
+                    const isInsideY = itemCenterY >= platform.y && itemCenterY <= (platform.y + platformFootprint.w);
+
+                    if (isInsideX && isInsideY) {
+                        if (platformFootprint.h > highestPlatformHeight) {
+                            highestPlatformHeight = platformFootprint.h;
+                            isOnPlatform = true;
+                        }
+                    }
+                });
+
+                itemToUpdate.elevation = isOnPlatform ? highestPlatformHeight : 0;
+            };
+            
+            const updateTooltip = (e) => {
+                if (state.view === '3d' || state.rulerState.active) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                 if (state.draggingItem) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${e.clientX + 15}px`;
+                    tooltip.style.top = `${e.clientY + 15}px`;
+                    tooltip.innerHTML = `<strong>Déplacement...</strong><br>X: ${state.draggingItem.x.toFixed(1)}m, Y: ${state.draggingItem.y.toFixed(1)}m`;
+                    return;
+                }
+                 if (state.linkingState.active) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${e.clientX + 15}px`;
+                    tooltip.style.top = `${e.clientY + 15}px`;
+                    if (state.linkingState.startMachineId) {
+                        tooltip.innerHTML = `Cliquez un nœud 'in' (entrée) pour finir.<br>Appuyez 'Échap' pour annuler.`;
+                    } else {
+                        tooltip.innerHTML = `Cliquez un nœud 'out' (sortie) pour commencer.<br>Appuyez 'Échap' pour quitter.`;
+                    }
+                    return;
+                }
+                const worldPos = getCanvasWorldPos(e);
+                const itemFound = getItemAt(worldPos);
+                
+                if (itemFound) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = `${e.clientX + 15}px`;
+                    tooltip.style.top = `${e.clientY + 15}px`;
+                    let name;
+                    if (itemFound.category === 'custom') {
+                        name = itemFound.name;
+                    } else if (itemFound.type === 'machine' || itemFound.type === 'utility') {
+                        name = database[itemFound.category]?.items[itemFound.id]?.name || 'Élément Inconnu';
+                         if (itemFound.id === 'CONV-CUSTOM') name += ` (${itemFound.footprint.l}m x ${itemFound.footprint.w}m)`;
+                    } else {
+                        name = (itemFound.type === 'pillar') ? 'Pilier' : (itemFound.type === 'door' ? 'Porte' : 'Plateforme');
+                    }
+                    tooltip.innerHTML = `<strong>${name}</strong><br>Double-clic pour supprimer<br>Sélection + 'R' pour pivoter`;
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            };
+            
+            const showObjectModal = (type) => {
+                state.addingObjectType = type;
+                const modalTitle = document.getElementById('modal-title');
+                const doorHeightGroup = document.getElementById('door-height-group');
+
+                if (type === 'pillar') {
+                    modalTitle.textContent = 'Ajouter un Pilier';
+                    document.getElementById('modal-label-1').textContent = 'Largeur du Pilier (m)';
+                    document.getElementById('modal-label-2').textContent = 'Profondeur du Pilier (m)';
+                    document.getElementById('obj-width').value = 0.5;
+                    document.getElementById('obj-length').value = 0.5;
+                    doorHeightGroup.classList.add('hidden');
+                } else if (type === 'door') {
+                    modalTitle.textContent = 'Ajouter une Porte';
+                    document.getElementById('modal-label-1').textContent = 'Largeur de Porte (m)';
+                    document.getElementById('modal-label-2').textContent = 'Épaisseur du Mur (m)';
+                    document.getElementById('obj-width').value = 2.0;
+                    document.getElementById('obj-length').value = 0.3;
+                    doorHeightGroup.classList.remove('hidden');
+                }
+                objectModal.classList.remove('hidden');
+            };
+
+            const hideObjectModal = () => {
+                objectModal.classList.add('hidden');
+                state.addingObjectType = null;
+            };
+
+            const showConveyorModal = () => conveyorModal.classList.remove('hidden');
+            const hideConveyorModal = () => {
+                conveyorModal.classList.add('hidden');
+                tempDropData = null;
+            };
+
+            const showCustomMachineModal = () => customMachineModal.classList.remove('hidden');
+            const hideCustomMachineModal = () => customMachineModal.classList.add('hidden');
+            
+            const showPlatformModal = () => platformModal.classList.remove('hidden');
+            const hidePlatformModal = () => {
+                platformModal.classList.add('hidden');
+                tempDropData = null;
+            };
+
+
+            document.getElementById('add-pillar-btn').addEventListener('click', () => showObjectModal('pillar'));
+            document.getElementById('add-door-btn').addEventListener('click', () => showObjectModal('door'));
+            document.getElementById('modal-cancel-btn').addEventListener('click', hideObjectModal);
+            document.getElementById('conveyor-modal-cancel-btn').addEventListener('click', hideConveyorModal);
+            document.getElementById('custom-machine-modal-cancel-btn').addEventListener('click', hideCustomMachineModal);
+            document.getElementById('platform-modal-cancel-btn').addEventListener('click', hidePlatformModal);
+            
+            objectForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const width = parseFloat(document.getElementById('obj-width').value);
+                const length = parseFloat(document.getElementById('obj-length').value);
+                const height = state.addingObjectType === 'door' ? parseFloat(document.getElementById('obj-height').value) : null;
+                const centerX = (-state.pan.x + canvas2D.width / 2) / state.scale;
+                const centerY = (-state.pan.y + canvas2D.height / 2) / state.scale;
+
+                state.items.push({
+                    type: state.addingObjectType,
+                    instanceId: Date.now(),
+                    x: centerX - length/2, 
+                    y: centerY - width/2,
+                    footprint: { w: width, l: length, h: height },
+                    rotation: 0,
+                    elevation: 0,
+                    parentPlatform: null,
+                });
+                hideObjectModal();
+                draw(ctx2D);
+                update3DScene();
+            });
+
+             conveyorForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!tempDropData) return;
+
+                const { data, worldPos } = tempDropData;
+                const length = parseFloat(document.getElementById('conv-length').value);
+                const width = parseFloat(document.getElementById('conv-width').value);
+                const heightA = parseFloat(document.getElementById('conv-height-a').value);
+                const heightB = parseFloat(document.getElementById('conv-height-b').value);
+                
+                const dropX = worldPos.x - (length / 2);
+                const dropY = worldPos.y - (width / 2);
+
+                const clampedX = Math.max(0, Math.min(dropX, state.facility.length - length));
+                const clampedY = Math.max(0, Math.min(dropY, state.facility.width - width));
+                
+                const newItem = {
+                    type: 'machine', // Traiter comme une machine pour la liaison
+                    id: data.id,
+                    name: database[data.category].items[data.id].name,
+                    category: data.category,
+                    x: clampedX,
+                    y: clampedY,
+                    rotation: 0,
+                    instanceId: Date.now(),
+                    footprint: { l: length, w: width, h_a: heightA, h_b: heightB },
+                    elevation: 0,
+                    parentPlatform: null,
+                };
+                
+                state.items.push(newItem);
+                updateItemElevation(newItem);
+
+                hideConveyorModal();
+                updateHUD();
+                draw(ctx2D);
+                update3DScene();
+            });
+            
+             customMachineForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const name = document.getElementById('custom-name').value;
+                const length = parseFloat(document.getElementById('custom-length').value);
+                const width = parseFloat(document.getElementById('custom-width').value);
+                const height = parseFloat(document.getElementById('custom-height').value);
+                
+                const centerX = (-state.pan.x + canvas2D.width / 2) / state.scale;
+                const centerY = (-state.pan.y + canvas2D.height / 2) / state.scale;
+                
+                const dropX = centerX - (length / 2);
+                const dropY = centerY - (width / 2);
+
+                const clampedX = Math.max(0, Math.min(dropX, state.facility.length - length));
+                const clampedY = Math.max(0, Math.min(dropY, state.facility.width - width));
+
+                const newItem = {
+                    type: 'machine', // Traiter comme une machine pour la liaison
+                    id: `CUSTOM-${Date.now()}`,
+                    name: name,
+                    category: 'custom',
+                    x: clampedX,
+                    y: clampedY,
+                    rotation: 0,
+                    instanceId: Date.now(),
+                    footprint: { l: length, w: width, h: height },
+                    elevation: 0,
+                    parentPlatform: null,
+                };
+
+                state.items.push(newItem);
+                updateItemElevation(newItem);
+
+                hideCustomMachineModal();
+                updateHUD();
+                draw(ctx2D);
+                update3DScene();
+             });
+             
+             platformForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!tempDropData) return;
+
+                const { worldPos } = tempDropData;
+                const length = parseFloat(document.getElementById('platform-length').value);
+                const width = parseFloat(document.getElementById('platform-width').value);
+                const height = parseFloat(document.getElementById('platform-height').value);
+                
+                const dropX = worldPos.x - (length / 2);
+                const dropY = worldPos.y - (width / 2);
+
+                const clampedX = Math.max(0, Math.min(dropX, state.facility.length - length));
+                const clampedY = Math.max(0, Math.min(dropY, state.facility.width - width));
+                
+                state.items.push({
+                    type: 'platform',
+                    id: 'PLATFORM-CUSTOM',
+                    name: 'Plateforme / Niveau',
+                    category: 'conveyors',
+                    x: clampedX,
+                    y: clampedY,
+                    rotation: 0,
+                    instanceId: Date.now(),
+                    footprint: { l: length, w: width, h: height },
+                    elevation: 0,
+                    parentPlatform: null,
+                });
+                
+                hidePlatformModal();
+                draw(ctx2D);
+                update3DScene();
+            });
+            
+            const toggleMode = (modeToEnable) => {
+                if (modeToEnable === 'link') {
+                    if (!state.linkingState.active) {
+                        state.linkingState.active = true;
+                        if(state.rulerState.active) toggleRulerMode(false);
+                    } else {
+                        state.linkingState.active = false;
+                    }
+                } else if (modeToEnable === 'ruler') {
+                     if (!state.rulerState.active) {
+                        state.rulerState.active = true;
+                        if(state.linkingState.active) toggleLinkMode(false);
+                    } else {
+                        state.rulerState.active = false;
+                    }
+                }
+                updateModeUI();
+            }
+
+            const toggleLinkMode = (force) => {
+                const newState = typeof force === 'boolean' ? force : !state.linkingState.active;
+                state.linkingState.active = newState;
+                if (newState && state.rulerState.active) {
+                    toggleRulerMode(false);
+                }
+                state.linkingState.startMachineId = null;
+                state.linkingState.startNodePosition2D = null;
+                state.linkingState.startNodePosition3D = null;
+                updateModeUI();
+            };
+
+            const toggleRulerMode = (force) => {
+                const newState = typeof force === 'boolean' ? force : !state.rulerState.active;
+                state.rulerState.active = newState;
+                if (newState && state.linkingState.active) {
+                    toggleLinkMode(false);
+                }
+                state.rulerState.startPoint2D = null;
+                state.rulerState.endPoint2D = null;
+                state.rulerState.startPoint3D = null;
+                state.rulerState.endPoint3D = null;
+                updateModeUI();
+            };
+
+            const updateModeUI = () => {
+                // UI Mode Lien
+                linkModeBtn.classList.toggle('bg-green-600', state.linkingState.active);
+                linkModeBtn.classList.toggle('bg-blue-800', !state.linkingState.active);
+                linkModeText.textContent = state.linkingState.active ? 'Lien Actif' : 'Mode Lien';
+                canvas2DContainer.classList.toggle('linking-active', state.linkingState.active);
+                canvas3DContainer.classList.toggle('linking-active', state.linkingState.active);
+
+                // UI Mode Règle
+                rulerModeBtn.classList.toggle('bg-green-600', state.rulerState.active);
+                rulerModeBtn.classList.toggle('text-white', state.rulerState.active);
+                rulerModeBtn.classList.toggle('bg-gray-700', !state.rulerState.active);
+                canvas2DContainer.classList.toggle('ruler-active', state.rulerState.active);
+                canvas3DContainer.classList.toggle('ruler-active', state.rulerState.active);
+
+                draw(ctx2D);
+                update3DScene();
+            };
+            
+            linkModeBtn.addEventListener('click', () => toggleLinkMode());
+            rulerModeBtn.addEventListener('click', () => toggleRulerMode());
+            
+            document.getElementById('reset-view-btn').addEventListener('click', () => {
+                state.pan = { ...initialState.pan };
+                state.scale = initialState.scale;
+                if (state.view === '2d') {
+                    draw(ctx2D);
+                } else {
+                    camera.position.set(state.facility.length / 2, 20, state.facility.width + 10);
+                    controls.target.set(state.facility.length / 2, 0, state.facility.width / 2);
+                }
+            });
+            document.getElementById('export-png-btn').addEventListener('click', () => {
+                switchView('2d');
+                setTimeout(() => {
+                    const dataUrl = canvas2D.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = 'kmk-conception-ligne.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, 100);
+            });
+
+             // --- Fonctionnalité Sauvegarder/Charger ---
+             const saveProject = () => {
+                const projectData = {
+                    facility: state.facility,
+                    items: state.items,
+                    connections: state.connections
+                };
+                const jsonString = JSON.stringify(projectData, null, 2); // Joli JSON
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'kmk-projet.kmkproj';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const loadProject = (file) => {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const loadedData = JSON.parse(e.target.result);
+                        if (loadedData.facility && Array.isArray(loadedData.items) && Array.isArray(loadedData.connections)) {
+                            // Validation de base réussie, charger les données
+                            state.facility = loadedData.facility;
+                            state.items = loadedData.items;
+                            state.connections = loadedData.connections;
+                            
+                            // S'assurer que nous sommes dans la vue de l'éditeur
+                            goToStage(2); 
+
+                            // Mettre à jour les éléments UI liés à la taille de l'installation
+                             document.getElementById('space-width').value = state.facility.width;
+                             document.getElementById('space-length').value = state.facility.length;
+                             document.getElementById('space-height').value = state.facility.height;
+
+                            // Rafraîchir tout
+                            resizeCanvas(); // Important si les dimensions ont changé
+                            updateHUD();
+                            draw(ctx2D);
+                            update3DScene(); // S'assurer que la scène 3D est aussi màj
+                             if(scene) { // Recentrer la caméra si la scène existe
+                                camera.position.set(state.facility.length / 2, 20, state.facility.width + 10);
+                                controls.target.set(state.facility.length / 2, 0, state.facility.width / 2);
+                                update3DWalls(); // Mettre à jour les murs
+                            }
+
+                        } else {
+                            showMessage('Erreur de Chargement', 'Format de fichier de projet non valide.');
+                        }
+                    } catch (error) {
+                        console.error("Erreur chargement projet:", error);
+                        showMessage('Erreur de Chargement', `Échec de l'analyse du fichier projet: ${error.message}`);
+                    } finally {
+                        // Réinitialiser la valeur de l'input
+                        loadProjectInput.value = ''; 
+                    }
+                };
+                reader.onerror = (e) => {
+                    console.error("Erreur lecture fichier:", e);
+                    showMessage('Erreur de Chargement', 'Impossible de lire le fichier sélectionné.');
+                     loadProjectInput.value = ''; // Réinitialiser aussi en cas d'erreur
+                };
+                reader.readAsText(file);
+            };
+
+            saveProjectBtn.addEventListener('click', saveProject);
+            loadProjectInput.addEventListener('change', (e) => loadProject(e.target.files[0]));
+             // Faire en sorte que le bouton de chargement de l'étape 1 déclenche aussi l'input
+            loadProjectStage1Btn.addEventListener('click', () => loadProjectInput.click());
+
+
+            window.addEventListener('resize', resizeCanvas);
+
+            const updateCoords = (e) => {
+                if (state.view === '2d') {
+                    const worldPos = getCanvasWorldPos(e);
+                    document.getElementById('hud-coords').textContent = `X: ${worldPos.x.toFixed(1)}, Y: ${worldPos.y.toFixed(1)}`;
+                }
+            };
+
+            const updateHUD = () => {
+                const analysis = analyzeLine(false);
+                const machineCount = state.items.filter(i => i.type === 'machine').length;
+                document.getElementById('hud-machines').textContent = machineCount;
+                const throughputText = isFinite(analysis.maxThroughput) ? `${analysis.maxThroughput.toFixed(1)} t/h` : 'N/A';
+                document.getElementById('hud-throughput').textContent = throughputText;
+                document.getElementById('hud-power').textContent = `${analysis.totalPower.toFixed(1)} kW/h`;
+                document.getElementById('hud-issues').textContent = analysis.issues.length;
+                document.getElementById('analyze-line-btn').disabled = machineCount === 0;
+            };
+            
+            const analyzeLine = (generateRecommendations = true) => {
+                const machines = state.items.filter(i => i.type === 'machine');
+                const issues = [];
+                let bottleneckMachine = null;
+                let maxThroughput = Infinity;
+                let totalPower = 0;
+                let totalBudget = 0;
+                const bom = {};
+
+                if (machines.length === 0) {
+                    if(generateRecommendations) issues.push({type: 'info', text: "Votre ligne est vide. Ajoutez des machines de la bibliothèque pour commencer."});
+                    return { issues, maxThroughput: 0, totalPower: 0, totalBudget: 0, bom: {} };
+                }
+                
+                machines.forEach((inst) => {
+                    let data;
+                    if (inst.category === 'custom') {
+                        data = { throughput: Infinity, power: 0, price: 0, notes: `Dimensions perso: ${inst.footprint.l}x${inst.footprint.w}x${inst.footprint.h}m` };
+                    } else if (inst.id === 'CONV-CUSTOM') {
+                         data = { ...database.conveyors.items['CONV-CUSTOM'], notes: `Dimensions perso: ${inst.footprint.l}x${inst.footprint.w}m` };
+                    }
+                    else {
+                        // S'assurer que l'item existe dans la db
+                        data = database[inst.category]?.items[inst.id];
+                        if (!data) {
+                             console.warn(`Données non trouvées pour ID machine: ${inst.id} dans catégorie: ${inst.category}. Analyse ignorée.`);
+                             data = { throughput: Infinity, power: 0, price: 0, notes: 'Données Manquantes !' }; // Données par défaut
+                        }
+                    }
+
+                    totalPower += data.power || 0;
+                    totalBudget += data.price || 0;
+                    
+                    let bomKey;
+                    if (inst.id === 'CONV-CUSTOM') {
+                        bomKey = `CONV-CUSTOM-${inst.footprint.l}x${inst.footprint.w}`;
+                    } else if (inst.category === 'custom') {
+                        bomKey = `${inst.name}-${inst.footprint.l}x${inst.footprint.w}x${inst.footprint.h}`;
+                    }
+                    else {
+                        bomKey = inst.id;
+                    }
+
+                    if (bom[bomKey]) {
+                        bom[bomKey].qty += 1; 
+                    } else { 
+                        // S'assurer que data est défini
+                         if (data) {
+                           bom[bomKey] = { ...data, name: inst.name, id: inst.id, category: inst.category, qty: 1 };
+                        } else {
+                             bom[bomKey] = { name: inst.name, id: inst.id, category: inst.category, qty: 1, throughput: Infinity, power: 0, price: 0, notes: 'Données Manquantes !' };
+                        }
+                    }
+
+                    if (data.throughput < maxThroughput) {
+                        maxThroughput = data.throughput;
+                        bottleneckMachine = inst;
+                    }
+                    const footprint = getItemFootprint(inst);
+                    const itemHeight = (inst.elevation || 0) + (Math.max(footprint.h || 0, footprint.h_a || 0, footprint.h_b || 0) || 1.5);
+
+                    if(itemHeight > state.facility.height && generateRecommendations){
+                        issues.push({type: 'error', text: `La machine **${inst.name}** nécessite une hauteur de plafond d'au moins **${itemHeight.toFixed(1)}m**. La hauteur de votre installation est de ${state.facility.height}m.`});
+                    }
+                });
+                
+                 if (machines.length === 1 && generateRecommendations) {
+                    const machineData = machines[0];
+                    let throughput = 'N/A';
+                     if (machineData.category !== 'custom' && database[machineData.category]?.items[machineData.id]) {
+                        const dbItem = database[machineData.category].items[machineData.id];
+                        if (dbItem && dbItem.throughput) {
+                            throughput = dbItem.throughput;
+                        }
+                    }
+                    const throughputText = throughput === 'N/A' ? 'N/A' : `${throughput.toFixed(1)} t/h`;
+                    issues.push({type: 'info', text: `Ligne à machine unique. La cadence est définie par la **${machineData.name}** à **${throughputText}**.`});
+                } else if (bottleneckMachine && generateRecommendations) {
+                    const machineData = bottleneckMachine.category === 'custom' ? bottleneckMachine : database[bottleneckMachine.category]?.items[bottleneckMachine.id];
+                     if(machineData){ // Vérifier si machineData existe
+                        const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+                         issues.push({type: 'bottleneck', text: `La cadence maximale de la ligne est limitée à **${throughputText}** par la **${machineData.name}**.`, machineId: bottleneckMachine.instanceId});
+                    }
+                }
+                
+                return { issues, maxThroughput: isFinite(maxThroughput) ? maxThroughput : 0, totalPower, totalBudget, bom };
+            };
+
+            const generateProposal = () => {
+                const { issues, maxThroughput, totalPower, bom } = analyzeLine(true);
+                const machineCount = state.items.filter(i => i.type === 'machine').length;
+                const layoutSection = document.getElementById('layout-section');
+                
+                const analysisContainer = document.getElementById('analysis-summary');
+                analysisContainer.innerHTML = '';
+                if (issues.length > 0) {
+                    issues.forEach(issue => {
+                        let bgColor, borderColor, textColor;
+                        switch(issue.type) {
+                            case 'error': bgColor = 'bg-red-900/50'; borderColor = 'border-red-500'; textColor = 'text-red-300'; break;
+                            case 'bottleneck': bgColor = 'bg-yellow-900/50'; borderColor = 'border-yellow-500'; textColor = 'text-yellow-300'; break;
+                            default: bgColor = 'bg-sky-900/50'; borderColor = 'border-sky-500'; textColor = 'text-sky-300'; break;
+                        }
+                        const p = document.createElement('p');
+                        p.className = `p-3 rounded-lg border ${bgColor} ${borderColor} ${textColor}`;
+                        p.innerHTML = issue.text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>');
+                        analysisContainer.appendChild(p);
+                    });
+                } else if (machineCount > 0) {
+                    analysisContainer.innerHTML = `<p class="p-3 bg-green-900/50 border border-green-500 rounded-lg text-green-300">La conception de votre ligne semble bien équilibrée. Un excellent point de départ pour un devis formel.</p>`;
+                } else {
+                    analysisContainer.innerHTML = `<p class="p-3 bg-gray-700 border border-gray-500 rounded-lg text-gray-300">Votre conception est vide. Ajoutez des machines de la bibliothèque pour commencer.</p>`;
+                }
+
+                const bomContainer = document.getElementById('proposal-bom');
+                bomContainer.innerHTML = '';
+                Object.values(bom).forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-700 last:border-b-0';
+                    let modelIdText = item.id.startsWith('CUSTOM-') ? 'Perso.' : item.id;
+                    if(item.id === 'CONV-CUSTOM') {
+                        modelIdText = 'Convoyeur Perso.';
+                    }
+
+                    row.innerHTML = `<td class="py-3 px-2 align-top">${item.qty}</td><td class="py-3 px-2 font-semibold text-white align-top">${item.name}</td><td class="py-3 px-2 text-blue-400 align-top">${modelIdText}</td><td class="py-3 px-2 text-gray-400 align-top">${item.notes || ''}</td>`;
+                    bomContainer.appendChild(row);
+                });
+
+                const layoutContainer = document.getElementById('proposal-layout');
+                layoutContainer.innerHTML = '';
+                if (state.items.length > 0) {
+                    layoutSection.classList.remove('hidden');
+                    const sortedItems = [...state.items].sort((a,b) => a.x - b.x);
+                    sortedItems.forEach(item => {
+                        const name = item.name || item.id;
+                        const model = item.id.startsWith('CUSTOM') ? 'Perso.' : item.id;
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-gray-700 last:border-b-0';
+                        row.innerHTML = `<td class="py-3 px-2 font-semibold text-white">${name}</td><td class="py-3 px-2 text-blue-400">${model}</td><td class="py-3 px-2 text-gray-400">(${item.x.toFixed(2)}, ${item.y.toFixed(2)}, ${(item.elevation || 0).toFixed(2)})</td>`;
+                        layoutContainer.appendChild(row);
+                    });
+                } else {
+                    layoutSection.classList.add('hidden');
+                }
+
+
+                document.getElementById('spec-machines').textContent = machineCount;
+                const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+                document.getElementById('spec-throughput').textContent = throughputText;
+                document.getElementById('spec-power').textContent = `${totalPower.toFixed(1)} kW/h`;
+                
+                draw(ctx2D);
+            };
+            
+            const sendEmailProposal = () => {
+                const { maxThroughput, totalPower, bom } = analyzeLine(true);
+                const machineCount = state.items.filter(i => i.type === 'machine').length;
+                const throughputText = isFinite(maxThroughput) ? `${maxThroughput.toFixed(1)} t/h` : 'N/A';
+
+                let bomText = "Nomenclature (BOM):\n";
+                bomText += "-------------------\n";
+                Object.values(bom).forEach(item => {
+                    bomText += `${item.qty}x ${item.name}`;
+                    if(item.id === 'CONV-CUSTOM' || item.category === 'custom') {
+                        bomText += ` (${item.notes})\n`
+                    } else {
+                        bomText += `\n`;
+                    }
+                });
+                
+                const body = `
+Bonjour l'équipe KMK,
+
+Veuillez trouver ci-dessous les détails préliminaires de la conception de la ligne.
+
+Dimensions de l'Installation:
+- Largeur: ${state.facility.width} m
+- Longueur: ${state.facility.length} m
+- Hauteur: ${state.facility.height} m
+
+Spécifications Estimées:
+- Nombre de Machines: ${machineCount}
+- Cadence Max: ${throughputText}
+- Consomm. Puiss. Est. Totale: ${totalPower.toFixed(1)} kW/h
+
+${bomText}
+
+Un PNG de la disposition peut être joint.
+
+Cordialement,
+Un Client KMK
+                `;
+
+                const subject = "Architecte de Ligne KMK - Proposition de Conception Préliminaire";
+                const mailtoLink = `mailto:akram.khelaifia@kmk-maszyny.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = mailtoLink;
+            };
+
+            // Étape Initiale
+            goToStage(1);
+        });
+    </script>
+</body>
+</html>
